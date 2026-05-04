@@ -11,11 +11,11 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that pr
 - **Browse** - Get album details, artist info, track metadata
 - **Podcasts & Audiobooks** - Browse shows, episodes, audiobooks, and chapters
 - **User Profile** - View profile, top artists/tracks, followed artists
-- **44 tools** covering all non-deprecated Spotify Web API endpoints
+- **44 tools** covering non-deprecated Spotify Web API endpoints
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.12+
 - A [Spotify Developer](https://developer.spotify.com/dashboard) account
 - A Spotify app with Client ID and Client Secret
 
@@ -257,12 +257,7 @@ rm ~/.spotify-mcp/credentials.json
 | `get_my_profile` | Get current user's profile |
 | `get_my_top_items` | Get top artists or tracks |
 
-### Follow
-| Tool | Description |
-|------|-------------|
-| `follow` | Follow artists or users |
-| `unfollow` | Unfollow artists or users |
-| `check_following` | Check if following artists/users |
+> Following artists/users uses the same `save_to_library` / `remove_from_library` / `check_saved_in_library` tools — pass an artist or user URI.
 
 ## Contributing
 

@@ -68,8 +68,24 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             optional_param: Description with default noted (default 10).
         """
         data = await client.get(f"/endpoint/{required_param}", params={"limit": optional_param})
-        # Format the response into a human-readable string
         return f"Result: {data.get('name')}"
+
+    @mcp.tool()
+    async def my_paged_tool(limit: int = 20, offset: int = 0) -> str:
+        """Fetch a paginated list of things.
+
+        Args:
+            limit: Maximum number of items to return (1-50, default 20).
+            offset: Index of the first item to return (default 0).
+        """
+        data = await client.get("/endpoint", params={"limit": limit, "offset": offset})
+        items = data.get("items", [])
+        total = data.get("total", len(items))
+        lines = [f"  - {item['name']} (ID: {item['id']})" for item in items]
+        return (
+            f"Things (showing {offset + 1}-{offset + len(items)} of {total}):\n"
+            + "\n".join(lines)
+        )
 ```
 
 ### 3. Register Your Module

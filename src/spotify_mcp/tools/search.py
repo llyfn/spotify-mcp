@@ -39,37 +39,35 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         sections = []
 
         if "tracks" in data:
-            tracks = data["tracks"].get("items", [])
-            if tracks:
+            track_items = data["tracks"].get("items", [])
+            if track_items:
                 lines = []
-                for t in tracks:
-                    artists = ", ".join(a["name"] for a in t.get("artists", []))
-                    lines.append(
-                        f"  - {t['name']} by {artists} (ID: {t['id']})"
-                    )
+                for t in track_items:
+                    artist_names = ", ".join(a["name"] for a in t.get("artists", []))
+                    lines.append(f"  - {t['name']} by {artist_names} (ID: {t['id']})")
                 sections.append(
                     f"Tracks ({data['tracks'].get('total', 0)} total):\n" + "\n".join(lines)
                 )
 
         if "albums" in data:
-            albums = data["albums"].get("items", [])
-            if albums:
+            album_items = data["albums"].get("items", [])
+            if album_items:
                 lines = []
-                for a in albums:
-                    artists = ", ".join(ar["name"] for ar in a.get("artists", []))
+                for a in album_items:
+                    artist_names = ", ".join(ar["name"] for ar in a.get("artists", []))
                     release = a.get("release_date", "N/A")
                     lines.append(
-                        f"  - {a['name']} by {artists} ({release}) (ID: {a['id']})"
+                        f"  - {a['name']} by {artist_names} ({release}) (ID: {a['id']})"
                     )
                 sections.append(
                     f"Albums ({data['albums'].get('total', 0)} total):\n" + "\n".join(lines)
                 )
 
         if "artists" in data:
-            artists_list = data["artists"].get("items", [])
-            if artists_list:
+            artist_items = data["artists"].get("items", [])
+            if artist_items:
                 lines = []
-                for a in artists_list:
+                for a in artist_items:
                     followers = a.get("followers", {}).get("total", 0)
                     lines.append(
                         f"  - {a['name']} ({followers:,} followers) (ID: {a['id']})"
@@ -79,43 +77,44 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 )
 
         if "playlists" in data:
-            playlists = data["playlists"].get("items", [])
-            if playlists:
+            playlist_items = data["playlists"].get("items", [])
+            if playlist_items:
                 lines = []
-                for p in playlists:
+                for p in playlist_items:
                     owner = p.get("owner", {}).get("display_name", "Unknown")
                     lines.append(f"  - {p['name']} by {owner} (ID: {p['id']})")
                 sections.append(
-                    f"Playlists ({data['playlists'].get('total', 0)} total):\n" + "\n".join(lines)
+                    f"Playlists ({data['playlists'].get('total', 0)} total):\n"
+                    + "\n".join(lines)
                 )
 
         if "shows" in data:
-            shows = data["shows"].get("items", [])
-            if shows:
+            show_items = data["shows"].get("items", [])
+            if show_items:
                 lines = [
                     f"  - {s['name']} by {s.get('publisher', 'Unknown')} (ID: {s['id']})"
-                    for s in shows
+                    for s in show_items
                 ]
                 sections.append(
                     f"Shows ({data['shows'].get('total', 0)} total):\n" + "\n".join(lines)
                 )
 
         if "episodes" in data:
-            episodes = data["episodes"].get("items", [])
-            if episodes:
+            episode_items = data["episodes"].get("items", [])
+            if episode_items:
                 lines = [
                     f"  - {e['name']} ({e.get('release_date', 'N/A')}) (ID: {e['id']})"
-                    for e in episodes
+                    for e in episode_items
                 ]
                 sections.append(
                     f"Episodes ({data['episodes'].get('total', 0)} total):\n" + "\n".join(lines)
                 )
 
         if "audiobooks" in data:
-            audiobooks = data["audiobooks"].get("items", [])
-            if audiobooks:
+            audiobook_items = data["audiobooks"].get("items", [])
+            if audiobook_items:
                 lines = []
-                for ab in audiobooks:
+                for ab in audiobook_items:
                     authors = ", ".join(a["name"] for a in ab.get("authors", []))
                     lines.append(f"  - {ab['name']} by {authors} (ID: {ab['id']})")
                 sections.append(

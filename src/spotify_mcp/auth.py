@@ -92,9 +92,7 @@ class AuthManager:
         """Use the refresh token to get a new access token."""
         client_id = get_client_id()
         client_secret = get_client_secret()
-        auth_header = base64.b64encode(
-            f"{client_id}:{client_secret}".encode()
-        ).decode()
+        auth_header = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
 
         async with httpx.AsyncClient() as http:
             response = await http.post(
@@ -173,13 +171,19 @@ class AuthManager:
             def log_message(self, format: str, *args: Any) -> None:
                 pass  # Suppress HTTP server logs on stdout
 
-        auth_url = SPOTIFY_AUTH_URL + "?" + urlencode({
-            "client_id": client_id,
-            "response_type": "code",
-            "redirect_uri": redirect_uri,
-            "scope": ALL_SCOPES,
-            "state": state,
-        })
+        auth_url = (
+            SPOTIFY_AUTH_URL
+            + "?"
+            + urlencode(
+                {
+                    "client_id": client_id,
+                    "response_type": "code",
+                    "redirect_uri": redirect_uri,
+                    "scope": ALL_SCOPES,
+                    "state": state,
+                }
+            )
+        )
 
         print(
             "\n=== Spotify Authentication Required ===\n"
@@ -212,18 +216,12 @@ class AuthManager:
         server.server_close()
 
         if auth_code_future["error"]:
-            raise AuthenticationError(
-                f"Authentication failed: {auth_code_future['error']}"
-            )
+            raise AuthenticationError(f"Authentication failed: {auth_code_future['error']}")
         if auth_code_future["code"] is None:
-            raise AuthenticationError(
-                "Authentication timed out. Please try again."
-            )
+            raise AuthenticationError("Authentication timed out. Please try again.")
 
         # Exchange code for tokens
-        auth_header = base64.b64encode(
-            f"{client_id}:{client_secret}".encode()
-        ).decode()
+        auth_header = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
 
         async with httpx.AsyncClient() as http:
             response = await http.post(

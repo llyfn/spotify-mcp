@@ -50,9 +50,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 lines.append(f"{i}. {item.get('name')} ({genres or 'N/A'}) (ID: {item.get('id')})")
             else:
                 artists = ", ".join(a["name"] for a in item.get("artists", []))
-                lines.append(
-                    f"{i}. {item.get('name')} - {artists} (ID: {item.get('id')})"
-                )
+                lines.append(f"{i}. {item.get('name')} - {artists} (ID: {item.get('id')})")
         total = data.get("total", len(items))
         range_label = {
             "short_term": "last 4 weeks",

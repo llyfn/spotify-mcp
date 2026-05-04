@@ -19,9 +19,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             limit: Maximum number of tracks to return (1-50, default 20).
             offset: Index of the first track to return (default 0).
         """
-        data = await client.get(
-            "/me/tracks", params={"limit": limit, "offset": offset}
-        )
+        data = await client.get("/me/tracks", params={"limit": limit, "offset": offset})
         items = data.get("items", [])
         lines = []
         for i, item in enumerate(items, start=offset + 1):
@@ -39,19 +37,14 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             limit: Maximum number of albums to return (1-50, default 20).
             offset: Index of the first album to return (default 0).
         """
-        data = await client.get(
-            "/me/albums", params={"limit": limit, "offset": offset}
-        )
+        data = await client.get("/me/albums", params={"limit": limit, "offset": offset})
         items = data.get("items", [])
         lines = []
         for item in items:
             album = item.get("album", {})
             artists = ", ".join(a["name"] for a in album.get("artists", []))
             release = album.get("release_date", "N/A")
-            lines.append(
-                f"- {album.get('name')} by {artists} ({release})"
-                f" (ID: {album.get('id')})"
-            )
+            lines.append(f"- {album.get('name')} by {artists} ({release}) (ID: {album.get('id')})")
         total = data.get("total", len(items))
         return paged_list("Saved albums", lines, total, offset)
 
@@ -63,9 +56,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             limit: Maximum number of shows to return (1-50, default 20).
             offset: Index of the first show to return (default 0).
         """
-        data = await client.get(
-            "/me/shows", params={"limit": limit, "offset": offset}
-        )
+        data = await client.get("/me/shows", params={"limit": limit, "offset": offset})
         items = data.get("items", [])
         lines = []
         for item in items:
@@ -84,18 +75,13 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             limit: Maximum number of episodes to return (1-50, default 20).
             offset: Index of the first episode to return (default 0).
         """
-        data = await client.get(
-            "/me/episodes", params={"limit": limit, "offset": offset}
-        )
+        data = await client.get("/me/episodes", params={"limit": limit, "offset": offset})
         items = data.get("items", [])
         lines = []
         for item in items:
             episode = item.get("episode", {})
             release = episode.get("release_date", "N/A")
-            lines.append(
-                f"- {episode.get('name')} ({release})"
-                f" (ID: {episode.get('id')})"
-            )
+            lines.append(f"- {episode.get('name')} ({release}) (ID: {episode.get('id')})")
         total = data.get("total", len(items))
         return paged_list("Saved episodes", lines, total, offset)
 
@@ -107,16 +93,12 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             limit: Maximum number of audiobooks to return (1-50, default 20).
             offset: Index of the first audiobook to return (default 0).
         """
-        data = await client.get(
-            "/me/audiobooks", params={"limit": limit, "offset": offset}
-        )
+        data = await client.get("/me/audiobooks", params={"limit": limit, "offset": offset})
         items = data.get("items", [])
         lines = []
         for item in items:
             authors = ", ".join(a["name"] for a in item.get("authors", []))
-            lines.append(
-                f"- {item.get('name')} by {authors} (ID: {item.get('id')})"
-            )
+            lines.append(f"- {item.get('name')} by {authors} (ID: {item.get('id')})")
         total = data.get("total", len(items))
         return paged_list("Saved audiobooks", lines, total, offset)
 

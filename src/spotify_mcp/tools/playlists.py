@@ -74,9 +74,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         return f"Playlist {playlist_id} updated successfully."
 
     @mcp.tool()
-    async def get_playlist_items(
-        playlist_id: str, limit: int = 20, offset: int = 0
-    ) -> str:
+    async def get_playlist_items(playlist_id: str, limit: int = 20, offset: int = 0) -> str:
         """Get items (tracks/episodes) in a playlist.
 
         Args:
@@ -125,9 +123,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             uris: List of Spotify URIs to remove (e.g. ["spotify:track:xxx"]).
         """
         items = [{"uri": uri} for uri in uris]
-        await client.delete(
-            f"/playlists/{playlist_id}/items", json={"items": items}
-        )
+        await client.delete(f"/playlists/{playlist_id}/items", json={"items": items})
         return f"Removed {len(uris)} item(s) from playlist {playlist_id}."
 
     @mcp.tool()
@@ -163,17 +159,13 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             limit: Maximum number of playlists to return (1-50, default 20).
             offset: Index of the first playlist to return (default 0).
         """
-        data = await client.get(
-            "/me/playlists", params={"limit": limit, "offset": offset}
-        )
+        data = await client.get("/me/playlists", params={"limit": limit, "offset": offset})
         items = data.get("items", [])
         lines = []
         for p in items:
             owner = p.get("owner", {}).get("display_name", "Unknown")
             count = p.get("items", {}).get("total", 0)
-            lines.append(
-                f"- {p['name']} ({count} tracks, by {owner}) (ID: {p['id']})"
-            )
+            lines.append(f"- {p['name']} ({count} tracks, by {owner}) (ID: {p['id']})")
         total = data.get("total", len(items))
         return paged_list("Your playlists", lines, total, offset)
 

@@ -193,9 +193,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             device_id: ID of the device to transfer to.
             play: Whether to start playing on the new device (default True).
         """
-        await client.put(
-            "/me/player", json={"device_ids": [device_id], "play": play}
-        )
+        await client.put("/me/player", json={"device_ids": [device_id], "play": play})
         return f"Playback transferred to device {device_id}."
 
     @mcp.tool()
@@ -249,9 +247,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         Args:
             limit: Maximum number of items to return (1-50, default 20).
         """
-        data = await client.get(
-            "/me/player/recently-played", params={"limit": limit}
-        )
+        data = await client.get("/me/player/recently-played", params={"limit": limit})
         items = data.get("items", [])
         lines = []
         for i, item in enumerate(items, start=1):

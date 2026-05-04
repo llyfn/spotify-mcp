@@ -33,9 +33,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         )
 
     @mcp.tool()
-    async def get_audiobook_chapters(
-        audiobook_id: str, limit: int = 20, offset: int = 0
-    ) -> str:
+    async def get_audiobook_chapters(audiobook_id: str, limit: int = 20, offset: int = 0) -> str:
         """Get chapters of a Spotify audiobook.
 
         Args:
@@ -52,9 +50,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         for i, ch in enumerate(items, start=offset + 1):
             duration_ms = ch.get("duration_ms", 0)
             duration = f"{duration_ms // 60000}min"
-            lines.append(
-                f"{i}. {ch.get('name')} ({duration}) (ID: {ch.get('id')})"
-            )
+            lines.append(f"{i}. {ch.get('name')} ({duration}) (ID: {ch.get('id')})")
         total = data.get("total", len(items))
         return paged_list("Chapters", lines, total, offset)
 

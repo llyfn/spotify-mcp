@@ -39,9 +39,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         return "\n".join(lines)
 
     @mcp.tool()
-    async def get_album_tracks(
-        album_id: str, limit: int = 20, offset: int = 0
-    ) -> str:
+    async def get_album_tracks(album_id: str, limit: int = 20, offset: int = 0) -> str:
         """Get tracks of a Spotify album.
 
         Args:

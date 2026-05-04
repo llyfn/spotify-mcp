@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Spotify MCP Server for Claude and other AI assistants"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 authors = [{ name = "Taeyun Eom" }]
 keywords = ["mcp", "spotify", "ai", "claude"]
 classifiers = [
@@ -12,7 +12,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
@@ -33,7 +32,7 @@ packages = ["src/spotify_mcp"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

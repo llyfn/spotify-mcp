@@ -45,7 +45,7 @@ No installation needed. Configure your MCP client to run the server directly:
   "mcpServers": {
     "spotify": {
       "command": "uvx",
-      "args": ["spotify-mcp"],
+      "args": ["spotifymcp"],
       "env": {
         "SPOTIFY_CLIENT_ID": "your_client_id",
         "SPOTIFY_CLIENT_SECRET": "your_client_secret"
@@ -72,7 +72,7 @@ Then configure your MCP client:
   "mcpServers": {
     "spotify": {
       "command": "uv",
-      "args": ["--directory", "/absolute/path/to/spotify-mcp", "run", "spotify-mcp"],
+      "args": ["--directory", "/absolute/path/to/spotify-mcp", "run", "spotifymcp"],
       "env": {
         "SPOTIFY_CLIENT_ID": "your_client_id",
         "SPOTIFY_CLIENT_SECRET": "your_client_secret"
@@ -104,7 +104,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
   "mcpServers": {
     "spotify": {
       "command": "uvx",
-      "args": ["spotify-mcp"],
+      "args": ["spotifymcp"],
       "env": {
         "SPOTIFY_CLIENT_ID": "your_client_id",
         "SPOTIFY_CLIENT_SECRET": "your_client_secret"
@@ -119,7 +119,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 <summary><strong>Claude Code</strong></summary>
 
 ```bash
-claude mcp add spotify -- uvx spotify-mcp
+claude mcp add spotify -- uvx spotifymcp
 ```
 
 Set the environment variables in your shell profile or `.env` file:
@@ -140,7 +140,7 @@ Add to `.cursor/mcp.json` in your project:
   "mcpServers": {
     "spotify": {
       "command": "uvx",
-      "args": ["spotify-mcp"],
+      "args": ["spotifymcp"],
       "env": {
         "SPOTIFY_CLIENT_ID": "your_client_id",
         "SPOTIFY_CLIENT_SECRET": "your_client_secret"

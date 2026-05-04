@@ -5,7 +5,7 @@ description = "Spotify MCP Server for Claude and other AI assistants"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.12"
-authors = [{ name = "Taeyun Eom" }]
+authors = [{ name = "llyfn" }]
 keywords = ["mcp", "spotify", "ai", "claude"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -35,7 +35,7 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
 [dependency-groups]
 dev = [

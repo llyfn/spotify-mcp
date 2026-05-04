@@ -27,15 +27,18 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             if item:
                 artists = ", ".join(a["name"] for a in item.get("artists", []))
                 track_lines.append(f"  {i}. {item['name']} - {artists}")
-        result = (
-            f"Playlist: {data.get('name')}\n"
-            f"Owner: {owner}\n"
-            f"Description: {data.get('description', 'N/A')}\n"
-            f"Public: {data.get('public')}\n"
-            f"Followers: {data.get('followers', {}).get('total', 0):,}\n"
-            f"Total Tracks: {total}\n"
-            f"URL: {data.get('external_urls', {}).get('spotify', 'N/A')}"
-        )
+        lines = [
+            f"Playlist: {data.get('name')}",
+            f"Owner: {owner}",
+            f"Description: {data.get('description', 'N/A')}",
+            f"Public: {data.get('public')}",
+        ]
+        followers = data.get("followers")
+        if followers and followers.get("total") is not None:
+            lines.append(f"Followers: {followers['total']:,}")
+        lines.append(f"Total Tracks: {total}")
+        lines.append(f"URL: {data.get('external_urls', {}).get('spotify', 'N/A')}")
+        result = "\n".join(lines)
         if track_lines:
             shown = min(20, len(items))
             result += f"\n\nTracks (first {shown} of {total}):\n" + "\n".join(track_lines)

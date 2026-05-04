@@ -11,7 +11,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
 
@@ -36,6 +36,10 @@ class AuthManager:
         self._access_token: str | None = None
         self._refresh_token: str | None = None
         self._expires_at: float = 0
+
+    def invalidate(self) -> None:
+        """Mark the current access token as expired so the next request refreshes."""
+        self._expires_at = 0
 
     async def get_access_token(self) -> str:
         """Return a valid access token, refreshing or authenticating as needed."""
@@ -169,14 +173,13 @@ class AuthManager:
             def log_message(self, format: str, *args: Any) -> None:
                 pass  # Suppress HTTP server logs on stdout
 
-        auth_url = (
-            f"{SPOTIFY_AUTH_URL}?"
-            f"client_id={client_id}&"
-            f"response_type=code&"
-            f"redirect_uri={redirect_uri}&"
-            f"scope={ALL_SCOPES}&"
-            f"state={state}"
-        )
+        auth_url = SPOTIFY_AUTH_URL + "?" + urlencode({
+            "client_id": client_id,
+            "response_type": "code",
+            "redirect_uri": redirect_uri,
+            "scope": ALL_SCOPES,
+            "state": state,
+        })
 
         print(
             "\n=== Spotify Authentication Required ===\n"

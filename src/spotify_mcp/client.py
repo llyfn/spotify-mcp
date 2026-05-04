@@ -8,12 +8,7 @@ import httpx
 
 from spotify_mcp.auth import AuthManager
 from spotify_mcp.config import SPOTIFY_API_BASE
-from spotify_mcp.exceptions import (
-    AuthenticationError,
-    NotFoundError,
-    RateLimitError,
-    SpotifyAPIError,
-)
+from spotify_mcp.exceptions import AuthenticationError, SpotifyAPIError
 
 MAX_RETRIES = 3
 
@@ -92,8 +87,7 @@ class SpotifyClient:
 
             # 401 Unauthorized - token may have expired mid-request
             if response.status_code == 401 and attempt == 0:
-                # Force a token refresh on next get_access_token() call
-                self._auth._expires_at = 0
+                self._auth.invalidate()
                 continue
 
             # 429 Rate limited - exponential backoff
@@ -107,17 +101,13 @@ class SpotifyClient:
                     )
                     await asyncio.sleep(wait_time)
                     continue
-                raise RateLimitError(retry_after=retry_after)
+                raise SpotifyAPIError(429, f"Rate limited (retry after {retry_after}s)")
 
-            # Map error responses
             error_message = self._extract_error_message(response)
-
-            if response.status_code == 404:
-                raise NotFoundError(error_message)
             if response.status_code == 403:
-                raise SpotifyAPIError(
-                    403,
-                    f"Forbidden: {error_message}. Check that your app has the required scopes.",
+                error_message = (
+                    f"Forbidden: {error_message}."
+                    " Check that your app has the required scopes."
                 )
             raise SpotifyAPIError(response.status_code, error_message)
 
@@ -128,14 +118,11 @@ class SpotifyClient:
         """Extract a human-readable error message from a Spotify API error response."""
         try:
             data = response.json()
-            if "error" in data:
-                error = data["error"]
-                if isinstance(error, dict):
-                    return error.get("message", str(error))
-                return str(error)
-        except Exception:
-            pass
+        except ValueError:
+            return response.text or f"HTTP {response.status_code}"
+        error = data.get("error") if isinstance(data, dict) else None
+        if isinstance(error, dict):
+            return error.get("message", str(error))
+        if error is not None:
+            return str(error)
         return response.text or f"HTTP {response.status_code}"
-
-    async def close(self) -> None:
-        await self._http.aclose()

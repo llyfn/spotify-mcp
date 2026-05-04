@@ -42,26 +42,26 @@ ALL_SCOPES = " ".join(
 
 
 def get_client_id() -> str:
-    value = os.environ.get("SPOTIFY_CLIENT_ID", "")
-    if not value:
-        print(
-            "Error: SPOTIFY_CLIENT_ID environment variable is required.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return value
+    return os.environ["SPOTIFY_CLIENT_ID"]
 
 
 def get_client_secret() -> str:
-    value = os.environ.get("SPOTIFY_CLIENT_SECRET", "")
-    if not value:
-        print(
-            "Error: SPOTIFY_CLIENT_SECRET environment variable is required.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return value
+    return os.environ["SPOTIFY_CLIENT_SECRET"]
 
 
 def get_redirect_uri() -> str:
     return os.environ.get("SPOTIFY_REDIRECT_URI", DEFAULT_REDIRECT_URI)
+
+
+def validate_environment() -> None:
+    """Exit with a helpful error if required env vars are missing."""
+    missing = [
+        var for var in ("SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET")
+        if not os.environ.get(var)
+    ]
+    if missing:
+        print(
+            f"Error: missing required environment variable(s): {', '.join(missing)}",
+            file=sys.stderr,
+        )
+        sys.exit(1)

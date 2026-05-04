@@ -1,5 +1,5 @@
 [project]
-name = "spotifymcp"
+name = "mcp-server-spotify"
 version = "0.1.0"
 description = "Spotify MCP Server for Claude and other AI assistants"
 readme = "README.md"
@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-spotifymcp = "spotify_mcp:main"
+mcp-server-spotify = "spotify_mcp:main"
 
 [build-system]
 requires = ["hatchling"]

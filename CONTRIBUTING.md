@@ -20,7 +20,7 @@ cd spotify-mcp
 uv sync --dev
 
 # Run the server locally
-uv run spotifymcp
+uv run mcp-server-spotify
 ```
 
 ### Code Quality

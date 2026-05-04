@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from spotify_mcp.tools._utils import paged_list
+
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
@@ -95,10 +97,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 added_by = entry.get("added_by", {}).get("id", "unknown")
                 lines.append(f"{i}. {item['name']} - {artists} (added by: {added_by})")
         total = data.get("total", len(items))
-        return (
-            f"Playlist items (showing {offset + 1}-{offset + len(items)} of {total}):\n"
-            + "\n".join(lines)
-        )
+        return paged_list("Playlist items", lines, total, offset)
 
     @mcp.tool()
     async def add_playlist_items(
@@ -176,10 +175,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 f"- {p['name']} ({count} tracks, by {owner}) (ID: {p['id']})"
             )
         total = data.get("total", len(items))
-        return (
-            f"Your playlists (showing {offset + 1}-{offset + len(items)} of {total}):\n"
-            + "\n".join(lines)
-        )
+        return paged_list("Your playlists", lines, total, offset)
 
     @mcp.tool()
     async def create_playlist(

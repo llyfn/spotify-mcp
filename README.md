@@ -15,7 +15,7 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that pr
 
 ## Prerequisites
 
-- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) — install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - A [Spotify Developer](https://developer.spotify.com/dashboard) account
 - A Spotify app with Client ID and Client Secret
 
@@ -95,10 +95,11 @@ Then point your client at the local checkout instead of `uvx`:
 The server uses Spotify's **Authorization Code** flow:
 
 1. On first use, the server opens your browser to Spotify's login page
-2. After you authorize, Spotify redirects to the local callback server
-3. The server exchanges the authorization code for access/refresh tokens
-4. Tokens are stored securely in `~/.spotify-mcp/credentials.json`
-5. Tokens are automatically refreshed when they expire
+2. Spotify will ask you to approve access — the server requests all scopes needed for the full tool set (playback, library, playlists, and user data)
+3. After you authorize, Spotify redirects to the local callback server
+4. The server exchanges the authorization code for access/refresh tokens
+5. Tokens are stored securely in `~/.spotify-mcp/credentials.json`
+6. Tokens are automatically refreshed when they expire
 
 If running in a headless environment (SSH, Docker), the auth URL will be printed to stderr — copy and paste it into a browser manually.
 

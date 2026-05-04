@@ -8,7 +8,7 @@ import httpx
 
 from spotify_mcp.auth import AuthManager
 from spotify_mcp.config import SPOTIFY_API_BASE
-from spotify_mcp.exceptions import AuthenticationError, SpotifyAPIError
+from spotify_mcp.exceptions import SpotifyAPIError
 
 MAX_RETRIES = 3
 
@@ -110,8 +110,6 @@ class SpotifyClient:
                     " Check that your app has the required scopes."
                 )
             raise SpotifyAPIError(response.status_code, error_message)
-
-        raise AuthenticationError("Failed to authenticate after retries")
 
     @staticmethod
     def _extract_error_message(response: httpx.Response) -> str:

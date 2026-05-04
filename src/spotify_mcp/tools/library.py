@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from spotify_mcp.tools._utils import paged_list
+
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
@@ -27,10 +29,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             artists = ", ".join(a["name"] for a in track.get("artists", []))
             lines.append(f"{i}. {track.get('name')} - {artists} (ID: {track.get('id')})")
         total = data.get("total", len(items))
-        return (
-            f"Saved tracks (showing {offset + 1}-{offset + len(items)} of {total}):\n"
-            + "\n".join(lines)
-        )
+        return paged_list("Saved tracks", lines, total, offset)
 
     @mcp.tool()
     async def get_saved_albums(limit: int = 20, offset: int = 0) -> str:
@@ -54,10 +53,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 f" (ID: {album.get('id')})"
             )
         total = data.get("total", len(items))
-        return (
-            f"Saved albums (showing {offset + 1}-{offset + len(items)} of {total}):\n"
-            + "\n".join(lines)
-        )
+        return paged_list("Saved albums", lines, total, offset)
 
     @mcp.tool()
     async def get_saved_shows(limit: int = 20, offset: int = 0) -> str:
@@ -78,10 +74,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 f"- {show.get('name')} by {show.get('publisher', 'Unknown')} (ID: {show.get('id')})"
             )
         total = data.get("total", len(items))
-        return (
-            f"Saved shows (showing {offset + 1}-{offset + len(items)} of {total}):\n"
-            + "\n".join(lines)
-        )
+        return paged_list("Saved shows", lines, total, offset)
 
     @mcp.tool()
     async def get_saved_episodes(limit: int = 20, offset: int = 0) -> str:
@@ -104,10 +97,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 f" (ID: {episode.get('id')})"
             )
         total = data.get("total", len(items))
-        return (
-            f"Saved episodes (showing {offset + 1}-{offset + len(items)} of {total}):\n"
-            + "\n".join(lines)
-        )
+        return paged_list("Saved episodes", lines, total, offset)
 
     @mcp.tool()
     async def get_saved_audiobooks(limit: int = 20, offset: int = 0) -> str:
@@ -128,10 +118,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 f"- {item.get('name')} by {authors} (ID: {item.get('id')})"
             )
         total = data.get("total", len(items))
-        return (
-            f"Saved audiobooks (showing {offset + 1}-{offset + len(items)} of {total}):\n"
-            + "\n".join(lines)
-        )
+        return paged_list("Saved audiobooks", lines, total, offset)
 
     @mcp.tool()
     async def save_to_library(uris: list[str]) -> str:

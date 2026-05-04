@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from spotify_mcp.tools._utils import paged_list
+
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
@@ -54,7 +56,4 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             release = a.get("release_date", "N/A")
             lines.append(f"- {a['name']} ({release}) [{album_type}] - {artists}")
         total = data.get("total", len(items))
-        return (
-            f"Albums (showing {offset + 1}-{offset + len(items)} of {total}):\n"
-            + "\n".join(lines)
-        )
+        return paged_list("Albums", lines, total, offset)

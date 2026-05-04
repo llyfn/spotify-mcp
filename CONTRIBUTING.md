@@ -33,9 +33,6 @@ uv run ruff check .
 
 # Format
 uv run ruff format .
-
-# Type check
-uv run mypy src/
 ```
 
 ## Adding a New Tool

@@ -56,8 +56,7 @@ def get_redirect_uri() -> str:
 def validate_environment() -> None:
     """Exit with a helpful error if required env vars are missing."""
     missing = [
-        var for var in ("SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET")
-        if not os.environ.get(var)
+        var for var in ("SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET") if not os.environ.get(var)
     ]
     if missing:
         print(

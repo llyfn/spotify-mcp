@@ -106,8 +106,7 @@ class SpotifyClient:
             error_message = self._extract_error_message(response)
             if response.status_code == 403:
                 error_message = (
-                    f"Forbidden: {error_message}."
-                    " Check that your app has the required scopes."
+                    f"Forbidden: {error_message}. Check that your app has the required scopes."
                 )
             raise SpotifyAPIError(response.status_code, error_message)
 

@@ -56,9 +56,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 for a in album_items:
                     artist_names = ", ".join(ar["name"] for ar in a.get("artists", []))
                     release = a.get("release_date", "N/A")
-                    lines.append(
-                        f"  - {a['name']} by {artist_names} ({release}) (ID: {a['id']})"
-                    )
+                    lines.append(f"  - {a['name']} by {artist_names} ({release}) (ID: {a['id']})")
                 sections.append(
                     f"Albums ({data['albums'].get('total', 0)} total):\n" + "\n".join(lines)
                 )
@@ -69,9 +67,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 lines = []
                 for a in artist_items:
                     followers = a.get("followers", {}).get("total", 0)
-                    lines.append(
-                        f"  - {a['name']} ({followers:,} followers) (ID: {a['id']})"
-                    )
+                    lines.append(f"  - {a['name']} ({followers:,} followers) (ID: {a['id']})")
                 sections.append(
                     f"Artists ({data['artists'].get('total', 0)} total):\n" + "\n".join(lines)
                 )
@@ -84,8 +80,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                     owner = p.get("owner", {}).get("display_name", "Unknown")
                     lines.append(f"  - {p['name']} by {owner} (ID: {p['id']})")
                 sections.append(
-                    f"Playlists ({data['playlists'].get('total', 0)} total):\n"
-                    + "\n".join(lines)
+                    f"Playlists ({data['playlists'].get('total', 0)} total):\n" + "\n".join(lines)
                 )
 
         if "shows" in data:
@@ -118,8 +113,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                     authors = ", ".join(a["name"] for a in ab.get("authors", []))
                     lines.append(f"  - {ab['name']} by {authors} (ID: {ab['id']})")
                 sections.append(
-                    f"Audiobooks ({data['audiobooks'].get('total', 0)} total):\n"
-                    + "\n".join(lines)
+                    f"Audiobooks ({data['audiobooks'].get('total', 0)} total):\n" + "\n".join(lines)
                 )
 
         if not sections:

@@ -22,9 +22,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         episodes = data.get("episodes", {}).get("items", [])
         episode_lines = []
         for i, ep in enumerate(episodes[:10], start=1):
-            episode_lines.append(
-                f"  {i}. {ep.get('name')} ({ep.get('release_date', 'N/A')})"
-            )
+            episode_lines.append(f"  {i}. {ep.get('name')} ({ep.get('release_date', 'N/A')})")
         lines = [f"Show: {data.get('name')}"]
         if data.get("publisher"):
             lines.append(f"Publisher: {data['publisher']}")
@@ -40,9 +38,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         return result
 
     @mcp.tool()
-    async def get_show_episodes(
-        show_id: str, limit: int = 20, offset: int = 0
-    ) -> str:
+    async def get_show_episodes(show_id: str, limit: int = 20, offset: int = 0) -> str:
         """Get episodes of a Spotify show.
 
         Args:
@@ -60,8 +56,6 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             duration_ms = ep.get("duration_ms", 0)
             duration = f"{duration_ms // 60000}min"
             release = ep.get("release_date", "N/A")
-            lines.append(
-                f"{i}. {ep.get('name')} ({release}, {duration}) (ID: {ep.get('id')})"
-            )
+            lines.append(f"{i}. {ep.get('name')} ({release}, {duration}) (ID: {ep.get('id')})")
         total = data.get("total", len(items))
         return paged_list("Episodes", lines, total, offset)

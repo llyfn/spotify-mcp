@@ -36,9 +36,20 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that pr
 
 ## Installation
 
-### Using uvx (Recommended)
+Pick your client below. All examples use `uvx` to fetch the server on demand — no clone, no manual install.
 
-No installation needed. Configure your MCP client to run the server directly:
+### Claude Code
+
+```bash
+claude mcp add spotify \
+  -e SPOTIFY_CLIENT_ID=your_client_id \
+  -e SPOTIFY_CLIENT_SECRET=your_client_secret \
+  -- uvx mcp-server-spotify
+```
+
+### Other MCP clients
+
+Most MCP clients configure servers via a JSON file. Add this entry to your client's MCP config:
 
 ```json
 {
@@ -55,101 +66,29 @@ No installation needed. Configure your MCP client to run the server directly:
 }
 ```
 
-### Local Installation
+### Running from a local checkout
 
-Clone the repository and install with `uv`:
+For development, or if you want to run a modified copy:
 
 ```bash
 git clone https://github.com/llyfn/spotify-mcp.git
-cd spotify-mcp
-uv sync
+cd spotify-mcp && uv sync
 ```
 
-Then configure your MCP client:
+Then point your client at the local checkout instead of `uvx`:
 
-```json
-{
-  "mcpServers": {
-    "spotify": {
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/spotify-mcp", "run", "mcp-server-spotify"],
-      "env": {
-        "SPOTIFY_CLIENT_ID": "your_client_id",
-        "SPOTIFY_CLIENT_SECRET": "your_client_secret"
-      }
-    }
-  }
-}
+```jsonc
+"command": "uv",
+"args": ["--directory", "/absolute/path/to/spotify-mcp", "run", "mcp-server-spotify"]
 ```
 
 ## Configuration
-
-### Environment Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `SPOTIFY_CLIENT_ID` | Yes | — | Your Spotify app's Client ID |
 | `SPOTIFY_CLIENT_SECRET` | Yes | — | Your Spotify app's Client Secret |
 | `SPOTIFY_REDIRECT_URI` | No | `http://127.0.0.1:8888/callback` | OAuth redirect URI |
-
-### MCP Client Configuration
-
-<details>
-<summary><strong>Claude Desktop</strong></summary>
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%AppData%\Claude\claude_desktop_config.json` (Windows):
-
-```json
-{
-  "mcpServers": {
-    "spotify": {
-      "command": "uvx",
-      "args": ["mcp-server-spotify"],
-      "env": {
-        "SPOTIFY_CLIENT_ID": "your_client_id",
-        "SPOTIFY_CLIENT_SECRET": "your_client_secret"
-      }
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>Claude Code</strong></summary>
-
-```bash
-claude mcp add spotify -- uvx mcp-server-spotify
-```
-
-Set the environment variables in your shell profile or `.env` file:
-
-```bash
-export SPOTIFY_CLIENT_ID="your_client_id"
-export SPOTIFY_CLIENT_SECRET="your_client_secret"
-```
-</details>
-
-<details>
-<summary><strong>Cursor</strong></summary>
-
-Add to `.cursor/mcp.json` in your project:
-
-```json
-{
-  "mcpServers": {
-    "spotify": {
-      "command": "uvx",
-      "args": ["mcp-server-spotify"],
-      "env": {
-        "SPOTIFY_CLIENT_ID": "your_client_id",
-        "SPOTIFY_CLIENT_SECRET": "your_client_secret"
-      }
-    }
-  }
-}
-```
-</details>
 
 ## Authentication
 

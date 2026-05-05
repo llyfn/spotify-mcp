@@ -1,5 +1,7 @@
 # Spotify MCP Server
 
+[![PyPI](https://img.shields.io/pypi/v/mcp-server-spotify.svg)](https://pypi.org/project/mcp-server-spotify/)
+
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that provides tools for interacting with the Spotify Web API. Enables AI assistants like Claude to search music, control playback, manage playlists, and more.
 
 ## Features

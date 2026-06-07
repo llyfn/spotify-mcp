@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from spotify_mcp.tools._utils import paged_list
+
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
@@ -57,8 +59,4 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             "medium_term": "last 6 months",
             "long_term": "all time",
         }.get(time_range, time_range)
-        header = (
-            f"Top {item_type} ({range_label},"
-            f" showing {offset + 1}-{offset + len(items)} of {total}):"
-        )
-        return header + "\n" + "\n".join(lines)
+        return paged_list(f"Top {item_type} ({range_label})", lines, total, offset)

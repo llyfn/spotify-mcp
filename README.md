@@ -8,12 +8,16 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that pr
 
 - **Search** - Find tracks, albums, artists, playlists, shows, episodes, and audiobooks
 - **Playback Control** - Play, pause, skip, seek, volume, shuffle, repeat, queue management
-- **Playlists** - Create, update, add/remove/reorder tracks
+- **Playlists** - Create, update, add/remove/reorder tracks (auto-chunks large batches)
 - **Library** - View and manage saved tracks, albums, shows, episodes, and audiobooks
-- **Browse** - Get album details, artist info, track metadata
+- **Browse** - Get details on tracks, albums, artists, episodes, chapters — single or batch
 - **Podcasts & Audiobooks** - Browse shows, episodes, audiobooks, and chapters
-- **User Profile** - View profile, top artists/tracks, followed artists
-- **44 tools** covering non-deprecated Spotify Web API endpoints
+- **Follow** - Follow/unfollow artists, users, and playlists
+- **User Profile** - View profile, top artists/tracks, diagnostic `whoami`
+- **Resources** - Subscribable snapshots of profile, playback, queue, top items
+- **Prompts** - Pre-baked workflows for playlist building, listening summaries, library cleanup
+- **Transports** - `stdio` (default), `sse`, and `streamable-http`
+- Covers all non-deprecated Spotify Web API endpoints
 
 ## Prerequisites
 
@@ -91,6 +95,7 @@ Then point your client at the local checkout instead of `uvx`:
 | `SPOTIFY_CLIENT_ID` | Yes | — | Your Spotify app's Client ID |
 | `SPOTIFY_CLIENT_SECRET` | Yes | — | Your Spotify app's Client Secret |
 | `SPOTIFY_REDIRECT_URI` | No | `http://127.0.0.1:8888/callback` | OAuth redirect URI |
+| `SPOTIFY_MCP_TRANSPORT` | No | `stdio` | MCP transport: `stdio`, `sse`, or `streamable-http` |
 
 ## Authentication
 
@@ -124,18 +129,21 @@ rm ~/.spotify-mcp/credentials.json
 | Tool | Description |
 |------|-------------|
 | `get_album` | Get album details by ID |
+| `get_albums` | Batch lookup — up to 20 album IDs in one call |
 | `get_album_tracks` | Get tracks in an album |
 
 ### Artists
 | Tool | Description |
 |------|-------------|
 | `get_artist` | Get artist details by ID |
+| `get_artists` | Batch lookup — up to 50 artist IDs in one call |
 | `get_artist_albums` | Get albums by an artist |
 
 ### Tracks
 | Tool | Description |
 |------|-------------|
 | `get_track` | Get track details by ID |
+| `get_tracks` | Batch lookup — up to 50 track IDs in one call |
 
 ### Playlists
 | Tool | Description |
@@ -184,22 +192,61 @@ rm ~/.spotify-mcp/credentials.json
 | Tool | Description |
 |------|-------------|
 | `get_show` | Get show details |
+| `get_shows` | Batch lookup — up to 50 show IDs in one call |
 | `get_show_episodes` | Get episodes of a show |
+| `get_episode` | Get a single episode by ID |
+| `get_episodes` | Batch lookup — up to 50 episode IDs in one call |
 
 ### Audiobooks
 | Tool | Description |
 |------|-------------|
 | `get_audiobook` | Get audiobook details |
+| `get_audiobooks` | Batch lookup — up to 50 audiobook IDs in one call |
 | `get_audiobook_chapters` | Get chapters of an audiobook |
 | `get_chapter` | Get chapter details |
+| `get_chapters` | Batch lookup — up to 50 chapter IDs in one call |
+
+### Follow
+| Tool | Description |
+|------|-------------|
+| `get_followed_artists` | List artists the user follows (cursor-paginated) |
+| `follow_artists_or_users` | Follow one or more artists or users by ID |
+| `unfollow_artists_or_users` | Unfollow one or more artists or users by ID |
+| `check_following` | Check whether the user follows given artist/user IDs |
+| `follow_playlist` | Follow a playlist (optionally publicly) |
+| `unfollow_playlist` | Unfollow a playlist |
 
 ### Users
 | Tool | Description |
 |------|-------------|
 | `get_my_profile` | Get current user's profile |
 | `get_my_top_items` | Get top artists or tracks |
+| `whoami` | Diagnostic — auth status, active device, configured scopes |
 
-> Following artists/users uses the same `save_to_library` / `remove_from_library` / `check_saved_in_library` tools — pass an artist or user URI.
+## Resources
+
+Snapshots of user state exposed under the `spotify://` URI scheme. MCP clients can
+include them as context or subscribe for updates without calling a tool.
+
+| URI | Description |
+|-----|-------------|
+| `spotify://me/profile` | Profile basics — name, country, plan, follower count |
+| `spotify://me/playback` | Current playback state (episode-aware) |
+| `spotify://me/queue` | Currently playing + next-up queue |
+| `spotify://me/top/tracks` | Top tracks (last ~6 months) |
+| `spotify://me/top/artists` | Top artists (last ~6 months) |
+
+## Prompts
+
+Canned workflows MCP clients can offer in their prompt picker. Each one walks the
+assistant through a multi-step task using the tools above.
+
+| Prompt | Description |
+|--------|-------------|
+| `build_playlist_from_recent` | Build a new playlist seeded by recent listening (`n_tracks`) |
+| `weekly_listening_summary` | Summarize the past week's listening grouped by artist/album |
+| `playlist_from_artists` | Build a playlist from a comma-separated list of artists (`artists`, `tracks_per_artist`) |
+| `library_cleanup` | Scan saved tracks and propose cleanup candidates (`scan_size`) |
 
 ## Contributing
 

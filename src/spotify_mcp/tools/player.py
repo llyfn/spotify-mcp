@@ -2,49 +2,40 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from spotify_mcp.tools._utils import (
+    format_progress,
+    format_track,
+)
+
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
     from spotify_mcp.client import SpotifyClient
 
 
-def _format_track(track: dict) -> str:
-    """Format a track/episode object into a readable string."""
-    if not track:
-        return "Nothing playing"
-    artists = ", ".join(a["name"] for a in track.get("artists", []))
-    name = track.get("name", "Unknown")
-    album = track.get("album", {}).get("name", "")
-    track_id = track.get("id")
-    suffix = f" (ID: {track_id})" if track_id else ""
-    if artists:
-        return f"{name} by {artists}" + (f" (from {album})" if album else "") + suffix
-    return name + suffix
+# Back-compat aliases; tests import these from this module.
+_format_track = format_track
+_format_progress = format_progress
 
 
-def _format_progress(progress_ms: int | None, duration_ms: int | None) -> str:
-    """Format progress/duration as MM:SS / MM:SS."""
-    if progress_ms is None or duration_ms is None:
-        return "N/A"
-    p_min, p_sec = divmod(progress_ms // 1000, 60)
-    d_min, d_sec = divmod(duration_ms // 1000, 60)
-    return f"{p_min}:{p_sec:02d} / {d_min}:{d_sec:02d}"
+# Always request episode-aware payloads so podcast playback renders correctly.
+_PLAYER_PARAMS = {"additional_types": "episode"}
 
 
 def register(mcp: FastMCP, client: SpotifyClient) -> None:
     @mcp.tool()
     async def get_playback_state() -> str:
         """Get the current playback state including track, device, and progress."""
-        data = await client.get("/me/player")
+        data = await client.get("/me/player", params=dict(_PLAYER_PARAMS))
         if not data:
             return "No active playback session."
         device = data.get("device", {})
         item = data.get("item", {})
         progress = data.get("progress_ms")
-        duration = item.get("duration_ms")
+        duration = item.get("duration_ms") if item else None
         return (
-            f"Now playing: {_format_track(item)}\n"
-            f"Progress: {_format_progress(progress, duration)}\n"
+            f"Now playing: {format_track(item)}\n"
+            f"Progress: {format_progress(progress, duration)}\n"
             f"Device: {device.get('name', 'Unknown')} ({device.get('type', 'Unknown')})\n"
             f"Volume: {device.get('volume_percent', 'N/A')}%\n"
             f"Shuffle: {data.get('shuffle_state', False)}\n"
@@ -55,15 +46,18 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
     @mcp.tool()
     async def get_currently_playing() -> str:
         """Get the currently playing track or episode."""
-        data = await client.get("/me/player/currently-playing")
+        data = await client.get(
+            "/me/player/currently-playing",
+            params=dict(_PLAYER_PARAMS),
+        )
         if not data or not data.get("item"):
             return "Nothing is currently playing."
         item = data["item"]
         progress = data.get("progress_ms")
         duration = item.get("duration_ms")
         return (
-            f"Currently playing: {_format_track(item)}\n"
-            f"Progress: {_format_progress(progress, duration)}\n"
+            f"Currently playing: {format_track(item)}\n"
+            f"Progress: {format_progress(progress, duration)}\n"
             f"Playing: {data.get('is_playing', False)}"
         )
 
@@ -174,13 +168,17 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         return f"Volume set to {volume_percent}%."
 
     @mcp.tool()
-    async def toggle_shuffle(state: bool, device_id: str | None = None) -> str:
-        """Toggle shuffle mode for playback.
+    async def toggle_shuffle(state: bool | None = None, device_id: str | None = None) -> str:
+        """Set or toggle shuffle mode for playback.
 
         Args:
-            state: True to enable shuffle, False to disable.
+            state: True to enable, False to disable. If omitted, flips the current state.
             device_id: ID of the device. If not provided, uses the active device.
         """
+        if state is None:
+            current = await client.get("/me/player", params=dict(_PLAYER_PARAMS))
+            current_state = bool(current.get("shuffle_state", False)) if current else False
+            state = not current_state
         params: dict = {"state": str(state).lower()}
         if device_id:
             params["device_id"] = device_id
@@ -231,31 +229,52 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
     @mcp.tool()
     async def get_queue() -> str:
         """Get the current playback queue."""
-        data = await client.get("/me/player/queue")
+        data = await client.get("/me/player/queue", params=dict(_PLAYER_PARAMS))
         currently = data.get("currently_playing")
         queue = data.get("queue", [])
-        result = f"Currently playing: {_format_track(currently)}\n"
+        result = f"Currently playing: {format_track(currently)}\n"
         if queue:
-            lines = [f"  {i}. {_format_track(t)}" for i, t in enumerate(queue[:20], start=1)]
+            lines = [f"  {i}. {format_track(t)}" for i, t in enumerate(queue[:20], start=1)]
             result += f"\nUp next ({len(queue)} in queue):\n" + "\n".join(lines)
         else:
             result += "\nQueue is empty."
         return result
 
     @mcp.tool()
-    async def get_recently_played(limit: int = 20) -> str:
+    async def get_recently_played(
+        limit: int = 20,
+        after: int | None = None,
+        before: int | None = None,
+    ) -> str:
         """Get the user's recently played tracks.
 
         Args:
             limit: Maximum number of items to return (1-50, default 20).
+            after: Unix-ms cursor; return items played AFTER this timestamp.
+            before: Unix-ms cursor; return items played BEFORE this timestamp.
+                Only one of `after` / `before` may be set.
         """
-        data = await client.get("/me/player/recently-played", params={"limit": limit})
+        if after is not None and before is not None:
+            return "Specify only one of `after` or `before`."
+        params: dict = {"limit": limit}
+        if after is not None:
+            params["after"] = after
+        if before is not None:
+            params["before"] = before
+        data = await client.get("/me/player/recently-played", params=params)
         items = data.get("items", [])
         lines = []
         for i, item in enumerate(items, start=1):
             track = item.get("track", {})
             played_at = item.get("played_at", "N/A")
-            lines.append(f"{i}. {_format_track(track)} (played at: {played_at})")
+            lines.append(f"{i}. {format_track(track)} (played at: {played_at})")
         if not lines:
             return "No recently played tracks."
-        return "Recently played:\n" + "\n".join(lines)
+        cursors = data.get("cursors") or {}
+        footer = ""
+        if cursors.get("before") or cursors.get("after"):
+            footer = (
+                f"\n\nCursors: before={cursors.get('before', 'N/A')} "
+                f"after={cursors.get('after', 'N/A')}"
+            )
+        return "Recently played:\n" + "\n".join(lines) + footer

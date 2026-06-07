@@ -51,14 +51,26 @@ async def test_register_all_tools_registers_expected_tools(
     expected = {
         "search",
         "get_track",
+        "get_tracks",
         "get_album",
+        "get_albums",
         "get_artist",
+        "get_artists",
         "get_playlist",
         "get_my_profile",
         "get_playback_state",
         "get_show",
+        "get_episode",
         "get_audiobook",
+        "get_chapters",
         "get_saved_tracks",
+        "whoami",
+        "follow_artists_or_users",
+        "unfollow_artists_or_users",
+        "check_following",
+        "get_followed_artists",
+        "follow_playlist",
+        "unfollow_playlist",
     }
     missing = expected - names
     assert not missing, f"missing tools: {missing}"

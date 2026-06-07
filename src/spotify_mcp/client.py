@@ -101,7 +101,11 @@ class SpotifyClient:
                     )
                     await asyncio.sleep(wait_time)
                     continue
-                raise SpotifyAPIError(429, f"Rate limited (retry after {retry_after}s)")
+                raise SpotifyAPIError(
+                    429,
+                    f"Rate limited (retry after {retry_after}s)",
+                    retry_after=retry_after,
+                )
 
             error_message = self._extract_error_message(response)
             if response.status_code == 403:
@@ -109,6 +113,13 @@ class SpotifyClient:
                     f"Forbidden: {error_message}. Check that your app has the required scopes."
                 )
             raise SpotifyAPIError(response.status_code, error_message)
+
+        # Unreachable: loop body always continues, returns, or raises.
+        raise SpotifyAPIError(0, "Request retry loop exited unexpectedly")
+
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client."""
+        await self._http.aclose()
 
     @staticmethod
     def _extract_error_message(response: httpx.Response) -> str:

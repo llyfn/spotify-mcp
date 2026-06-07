@@ -15,9 +15,11 @@ def _format_track(track: dict) -> str:
     artists = ", ".join(a["name"] for a in track.get("artists", []))
     name = track.get("name", "Unknown")
     album = track.get("album", {}).get("name", "")
+    track_id = track.get("id")
+    suffix = f" (ID: {track_id})" if track_id else ""
     if artists:
-        return f"{name} by {artists}" + (f" (from {album})" if album else "")
-    return name
+        return f"{name} by {artists}" + (f" (from {album})" if album else "") + suffix
+    return name + suffix
 
 
 def _format_progress(progress_ms: int | None, duration_ms: int | None) -> str:

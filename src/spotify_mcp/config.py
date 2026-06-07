@@ -31,7 +31,6 @@ ALL_SCOPES = " ".join(
         "user-read-playback-position",
         # Playlists
         "playlist-read-private",
-        "playlist-read-collaborative",
         "playlist-modify-public",
         "playlist-modify-private",
         # Follow

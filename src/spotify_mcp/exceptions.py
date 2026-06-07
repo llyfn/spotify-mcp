@@ -12,7 +12,13 @@ class AuthenticationError(SpotifyMCPError):
 class SpotifyAPIError(SpotifyMCPError):
     """Raised when the Spotify API returns an error response."""
 
-    def __init__(self, status_code: int, message: str) -> None:
+    def __init__(
+        self,
+        status_code: int,
+        message: str,
+        retry_after: int | None = None,
+    ) -> None:
         self.status_code = status_code
         self.message = message
+        self.retry_after = retry_after
         super().__init__(f"Spotify API error {status_code}: {message}")

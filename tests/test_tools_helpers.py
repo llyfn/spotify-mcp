@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from spotify_mcp.tools._utils import paged_list
+import pytest
+
+from spotify_mcp.tools._utils import (
+    chunked,
+    format_duration_min,
+    format_duration_mmss,
+    paged_list,
+)
 from spotify_mcp.tools.player import _format_progress, _format_track
 
 
@@ -56,3 +63,42 @@ def test_format_progress_pads_seconds() -> None:
 def test_format_progress_handles_none() -> None:
     assert _format_progress(None, 10_000) == "N/A"
     assert _format_progress(10_000, None) == "N/A"
+
+
+def test_format_track_recognises_episode_shape() -> None:
+    # Episodes have `show` instead of `artists` / `album`.
+    episode = {
+        "name": "Ep 42: Foo",
+        "show": {"name": "Some Podcast", "publisher": "Pub"},
+        "id": "ep1",
+    }
+    assert _format_track(episode) == "Ep 42: Foo on Some Podcast (ID: ep1)"
+
+
+def test_format_track_track_with_id() -> None:
+    track = {
+        "name": "Song",
+        "artists": [{"name": "A"}],
+        "album": {"name": "Disc"},
+        "id": "t1",
+    }
+    assert _format_track(track) == "Song by A (from Disc) (ID: t1)"
+
+
+def test_format_duration_helpers() -> None:
+    assert format_duration_mmss(65_000) == "1:05"
+    assert format_duration_mmss(0) == "0:00"
+    assert format_duration_mmss(None) == "0:00"
+    assert format_duration_min(120_000) == "2min"
+    assert format_duration_min(0) == "0min"
+
+
+def test_chunked_splits_evenly() -> None:
+    assert chunked([1, 2, 3, 4, 5], 2) == [[1, 2], [3, 4], [5]]
+    assert chunked([], 3) == []
+    assert chunked([1, 2, 3], 10) == [[1, 2, 3]]
+
+
+def test_chunked_rejects_zero_size() -> None:
+    with pytest.raises(ValueError):
+        chunked([1, 2], 0)

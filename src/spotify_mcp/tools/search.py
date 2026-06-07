@@ -20,7 +20,8 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         """Search for tracks, albums, artists, playlists, shows, episodes, or audiobooks on Spotify.
 
         Args:
-            query: Search query. Supports filters: artist:, album:, track:, year:, genre:.
+            query: Search query. Supports filters: artist:, album:, track:, year:, genre:,
+                isrc: (track ISRC), upc: (album UPC). Use NOT/OR with quotes for refinement.
             types: Comma-separated types: track, album, artist, playlist, show, episode, audiobook.
             limit: Maximum results per type (1-50, default 10).
             offset: Index of first result to return (default 0).

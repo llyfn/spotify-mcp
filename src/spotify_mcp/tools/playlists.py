@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from spotify_mcp.tools._utils import paged_list
+from spotify_mcp.tools._utils import chunked, paged_list
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -10,15 +10,23 @@ if TYPE_CHECKING:
     from spotify_mcp.client import SpotifyClient
 
 
+_PLAYLIST_ITEMS_MAX_PER_REQUEST = 100
+
+
 def register(mcp: FastMCP, client: SpotifyClient) -> None:
     @mcp.tool()
-    async def get_playlist(playlist_id: str) -> str:
+    async def get_playlist(playlist_id: str, market: str | None = None) -> str:
         """Get details of a Spotify playlist.
+
+        Shows playlist metadata plus the first 20 tracks. For more tracks or
+        pagination, use `get_playlist_items`.
 
         Args:
             playlist_id: The Spotify ID of the playlist.
+            market: ISO 3166-1 alpha-2 country code; affects track availability.
         """
-        data = await client.get(f"/playlists/{playlist_id}")
+        params = {"market": market} if market else None
+        data = await client.get(f"/playlists/{playlist_id}", params=params)
         owner = data.get("owner", {}).get("display_name", "Unknown")
         items_paged = data.get("tracks", {})
         total = items_paged.get("total", 0)
@@ -74,18 +82,24 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         return f"Playlist {playlist_id} updated successfully."
 
     @mcp.tool()
-    async def get_playlist_items(playlist_id: str, limit: int = 20, offset: int = 0) -> str:
+    async def get_playlist_items(
+        playlist_id: str,
+        limit: int = 20,
+        offset: int = 0,
+        market: str | None = None,
+    ) -> str:
         """Get items (tracks/episodes) in a playlist.
 
         Args:
             playlist_id: The Spotify ID of the playlist.
             limit: Maximum number of items to return (1-100, default 20).
             offset: Index of the first item to return (default 0).
+            market: ISO 3166-1 alpha-2 country code.
         """
-        data = await client.get(
-            f"/playlists/{playlist_id}/items",
-            params={"limit": limit, "offset": offset},
-        )
+        params: dict = {"limit": limit, "offset": offset}
+        if market:
+            params["market"] = market
+        data = await client.get(f"/playlists/{playlist_id}/items", params=params)
         items = data.get("items", [])
         lines = []
         for i, entry in enumerate(items, start=offset + 1):
@@ -101,30 +115,41 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
     async def add_playlist_items(
         playlist_id: str, uris: list[str], position: int | None = None
     ) -> str:
-        """Add tracks or episodes to a playlist.
+        """Add tracks or episodes to a playlist. Auto-chunks at 100 items per request.
 
         Args:
             playlist_id: The Spotify ID of the playlist.
             uris: List of Spotify URIs to add (e.g. ["spotify:track:xxx"]).
             position: Position to insert items (0-based). Appends to end if not specified.
+                When chunking, subsequent chunks insert immediately after the previous.
         """
-        body: dict = {"uris": uris}
-        if position is not None:
-            body["position"] = position
-        await client.post(f"/playlists/{playlist_id}/items", json=body)
-        return f"Added {len(uris)} item(s) to playlist {playlist_id}."
+        if not uris:
+            return "No URIs provided."
+        added = 0
+        for chunk_idx, chunk in enumerate(chunked(uris, _PLAYLIST_ITEMS_MAX_PER_REQUEST)):
+            body: dict = {"uris": chunk}
+            if position is not None:
+                body["position"] = position + chunk_idx * _PLAYLIST_ITEMS_MAX_PER_REQUEST
+            await client.post(f"/playlists/{playlist_id}/items", json=body)
+            added += len(chunk)
+        return f"Added {added} item(s) to playlist {playlist_id}."
 
     @mcp.tool()
     async def remove_playlist_items(playlist_id: str, uris: list[str]) -> str:
-        """Remove tracks or episodes from a playlist.
+        """Remove tracks or episodes from a playlist. Auto-chunks at 100 items per request.
 
         Args:
             playlist_id: The Spotify ID of the playlist.
             uris: List of Spotify URIs to remove (e.g. ["spotify:track:xxx"]).
         """
-        items = [{"uri": uri} for uri in uris]
-        await client.delete(f"/playlists/{playlist_id}/items", json={"items": items})
-        return f"Removed {len(uris)} item(s) from playlist {playlist_id}."
+        if not uris:
+            return "No URIs provided."
+        removed = 0
+        for chunk in chunked(uris, _PLAYLIST_ITEMS_MAX_PER_REQUEST):
+            items = [{"uri": uri} for uri in chunk]
+            await client.delete(f"/playlists/{playlist_id}/items", json={"items": items})
+            removed += len(chunk)
+        return f"Removed {removed} item(s) from playlist {playlist_id}."
 
     @mcp.tool()
     async def reorder_playlist_items(

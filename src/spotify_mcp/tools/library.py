@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from spotify_mcp.tools._utils import paged_list
+from spotify_mcp.tools._utils import chunked, paged_list
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
     from spotify_mcp.client import SpotifyClient
+
+
+_LIBRARY_MAX_PER_REQUEST = 50
 
 
 def register(mcp: FastMCP, client: SpotifyClient) -> None:
@@ -104,39 +107,56 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
 
     @mcp.tool()
     async def save_to_library(uris: list[str]) -> str:
-        """Save items to the current user's library.
+        """Save items (tracks/albums/shows/episodes/audiobooks) to the user's library.
+
+        Auto-chunks at 50 items per request.
 
         Args:
-            uris: List of Spotify URIs to save (e.g. ["spotify:track:xxx"]). Max 40.
+            uris: List of Spotify URIs to save (e.g. ["spotify:track:xxx"]).
         """
-        await client.put("/me/library", params={"uris": ",".join(uris)})
-        return f"Saved {len(uris)} item(s) to your library."
+        if not uris:
+            return "No URIs provided."
+        saved = 0
+        for chunk in chunked(uris, _LIBRARY_MAX_PER_REQUEST):
+            await client.put("/me/library", params={"uris": ",".join(chunk)})
+            saved += len(chunk)
+        return f"Saved {saved} item(s) to your library."
 
     @mcp.tool()
     async def remove_from_library(uris: list[str]) -> str:
-        """Remove items from the current user's library.
+        """Remove items from the current user's library. Auto-chunks at 50 items per request.
 
         Args:
-            uris: List of Spotify URIs to remove (e.g. ["spotify:track:xxx"]). Max 40.
+            uris: List of Spotify URIs to remove (e.g. ["spotify:track:xxx"]).
         """
-        await client.delete("/me/library", params={"uris": ",".join(uris)})
-        return f"Removed {len(uris)} item(s) from your library."
+        if not uris:
+            return "No URIs provided."
+        removed = 0
+        for chunk in chunked(uris, _LIBRARY_MAX_PER_REQUEST):
+            await client.delete("/me/library", params={"uris": ",".join(chunk)})
+            removed += len(chunk)
+        return f"Removed {removed} item(s) from your library."
 
     @mcp.tool()
     async def check_saved_in_library(uris: list[str]) -> str:
         """Check if items are saved in the current user's library.
 
+        Auto-chunks at 50 items per request.
+
         Args:
-            uris: List of Spotify URIs to check (e.g. ["spotify:track:xxx"]). Max 40.
+            uris: List of Spotify URIs to check (e.g. ["spotify:track:xxx"]).
         """
-        data = await client.get(
-            "/me/library/contains",
-            params={"uris": ",".join(uris)},
-        )
-        if isinstance(data, list):
-            results = [
-                f"  {uri}: {'saved' if saved else 'not saved'}"
-                for uri, saved in zip(uris, data, strict=False)
-            ]
-            return "Library check:\n" + "\n".join(results)
-        return f"Library check result: {data}"
+        if not uris:
+            return "No URIs provided."
+        combined: list[bool] = []
+        for chunk in chunked(uris, _LIBRARY_MAX_PER_REQUEST):
+            data = await client.get("/me/library/contains", params={"uris": ",".join(chunk)})
+            if isinstance(data, list):
+                combined.extend(bool(v) for v in data)
+            else:
+                return f"Library check result: {data}"
+        results = [
+            f"  {uri}: {'saved' if saved else 'not saved'}"
+            for uri, saved in zip(uris, combined, strict=False)
+        ]
+        return "Library check:\n" + "\n".join(results)

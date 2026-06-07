@@ -133,6 +133,8 @@ async def test_429_exhausts_retries(client: SpotifyClient, monkeypatch: pytest.M
     with pytest.raises(SpotifyAPIError) as exc_info:
         await client.get("/tracks/x")
     assert exc_info.value.status_code == 429
+    # New: retry_after is attached so callers can honor it.
+    assert exc_info.value.retry_after == 1
 
 
 @respx.mock

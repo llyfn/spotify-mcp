@@ -6,6 +6,7 @@ from spotify_mcp.tools import (
     albums,
     artists,
     audiobooks,
+    following,
     library,
     player,
     playlists,
@@ -31,6 +32,7 @@ _MODULES = [
     audiobooks,
     users,
     player,
+    following,
 ]
 
 

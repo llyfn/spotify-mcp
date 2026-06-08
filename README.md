@@ -19,6 +19,18 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that pr
 - **Transports** - `stdio` (default), `sse`, and `streamable-http`
 - Covers all non-deprecated Spotify Web API endpoints
 
+## Example interactions
+
+- _"What am I listening to right now?"_
+- _"Play some Radiohead on my living room speaker."_
+- _"Skip this track and turn the volume down to 30."_
+- _"Build me a playlist of 25 chill tracks based on what I've been listening to this week."_
+- _"Add the last three songs I played to my 'Focus' playlist."_
+- _"Show me my top artists from the last six months."_
+- _"Search for live albums by Nils Frahm and save the best one to my library."_
+- _"Unfollow every playlist I haven't opened that wasn't made by me."_
+- _"Queue up the next episode of the show I was listening to yesterday."_
+
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) — install with `curl -LsSf https://astral.sh/uv/install.sh | sh`

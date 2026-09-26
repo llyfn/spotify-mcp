@@ -10,9 +10,9 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that pr
 - **Playback Control** - Play, pause, skip, seek, volume, shuffle, repeat, queue management
 - **Playlists** - Create, update, add/remove/reorder tracks (auto-chunks large batches)
 - **Library** - View and manage saved tracks, albums, shows, episodes, and audiobooks
-- **Browse** - Get details on tracks, albums, artists, episodes, chapters — single or batch
+- **Browse** - Get details on tracks, albums, artists, episodes, and chapters
 - **Podcasts & Audiobooks** - Browse shows, episodes, audiobooks, and chapters
-- **Follow** - Follow/unfollow artists, users, and playlists
+- **Follow** - List followed artists; follow/unfollow artists, users, and playlists through the library tools by URI
 - **User Profile** - View profile, top artists/tracks, diagnostic `whoami`
 - **Resources** - Subscribable snapshots of profile, playback, queue, top items
 - **Prompts** - Pre-baked workflows for playlist building, listening summaries, library cleanup
@@ -109,6 +109,16 @@ Then point your client at the local checkout instead of `uvx`:
 | `SPOTIFY_REDIRECT_URI` | No | `http://127.0.0.1:8888/callback` | OAuth redirect URI |
 | `SPOTIFY_MCP_TRANSPORT` | No | `stdio` | MCP transport: `stdio`, `sse`, or `streamable-http` |
 
+## Spotify API notes
+
+Development-mode Spotify apps have these restrictions (see the
+[February 2026 migration guide](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)):
+
+- The app owner needs an active Spotify Premium subscription.
+- API quota is shared by all Client IDs on the developer account. When it runs out, tools report `Quota exceeded`.
+- Search returns at most 10 results per type.
+- Full playlist contents are only returned for playlists you own or collaborate on.
+
 ## Authentication
 
 The server uses Spotify's **Authorization Code** flow:
@@ -141,21 +151,18 @@ rm ~/.spotify-mcp/credentials.json
 | Tool | Description |
 |------|-------------|
 | `get_album` | Get album details by ID |
-| `get_albums` | Batch lookup — up to 20 album IDs in one call |
 | `get_album_tracks` | Get tracks in an album |
 
 ### Artists
 | Tool | Description |
 |------|-------------|
 | `get_artist` | Get artist details by ID |
-| `get_artists` | Batch lookup — up to 50 artist IDs in one call |
 | `get_artist_albums` | Get albums by an artist |
 
 ### Tracks
 | Tool | Description |
 |------|-------------|
 | `get_track` | Get track details by ID |
-| `get_tracks` | Batch lookup — up to 50 track IDs in one call |
 
 ### Playlists
 | Tool | Description |
@@ -177,9 +184,9 @@ rm ~/.spotify-mcp/credentials.json
 | `get_saved_shows` | Get saved shows |
 | `get_saved_episodes` | Get saved episodes |
 | `get_saved_audiobooks` | Get saved audiobooks |
-| `save_to_library` | Save items to library |
-| `remove_from_library` | Remove items from library |
-| `check_saved_in_library` | Check if items are in library |
+| `save_to_library` | Save items to library, or follow artists/users/playlists by URI (max 40/request, auto-chunked) |
+| `remove_from_library` | Remove items from library, or unfollow artists/users/playlists by URI (max 40/request, auto-chunked) |
+| `check_saved_in_library` | Check if items are saved, or artists/users/playlists are followed, by URI (max 40/request, auto-chunked) |
 
 ### Player
 | Tool | Description |
@@ -204,29 +211,20 @@ rm ~/.spotify-mcp/credentials.json
 | Tool | Description |
 |------|-------------|
 | `get_show` | Get show details |
-| `get_shows` | Batch lookup — up to 50 show IDs in one call |
 | `get_show_episodes` | Get episodes of a show |
 | `get_episode` | Get a single episode by ID |
-| `get_episodes` | Batch lookup — up to 50 episode IDs in one call |
 
 ### Audiobooks
 | Tool | Description |
 |------|-------------|
 | `get_audiobook` | Get audiobook details |
-| `get_audiobooks` | Batch lookup — up to 50 audiobook IDs in one call |
 | `get_audiobook_chapters` | Get chapters of an audiobook |
 | `get_chapter` | Get chapter details |
-| `get_chapters` | Batch lookup — up to 50 chapter IDs in one call |
 
 ### Follow
 | Tool | Description |
 |------|-------------|
 | `get_followed_artists` | List artists the user follows (cursor-paginated) |
-| `follow_artists_or_users` | Follow one or more artists or users by ID |
-| `unfollow_artists_or_users` | Unfollow one or more artists or users by ID |
-| `check_following` | Check whether the user follows given artist/user IDs |
-| `follow_playlist` | Follow a playlist (optionally publicly) |
-| `unfollow_playlist` | Unfollow a playlist |
 
 ### Users
 | Tool | Description |
@@ -242,7 +240,7 @@ include them as context or subscribe for updates without calling a tool.
 
 | URI | Description |
 |-----|-------------|
-| `spotify://me/profile` | Profile basics — name, country, plan, follower count |
+| `spotify://me/profile` | Profile basics — display name, user ID, account ID |
 | `spotify://me/playback` | Current playback state (episode-aware) |
 | `spotify://me/queue` | Currently playing + next-up queue |
 | `spotify://me/top/tracks` | Top tracks (last ~6 months) |

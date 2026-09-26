@@ -432,6 +432,67 @@ async def test_get_saved_shows_does_not_show_publisher_placeholder() -> None:
     assert "- Pod (ID: s1)" in text
 
 
+async def test_get_artist_does_not_show_genres() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={("GET", "/artists/a1"): {"name": "Radiohead", "genres": ["rock"]}}
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_artist", {"artist_id": "a1"}))
+    assert "Artist: Radiohead" in text
+    assert "rock" not in text
+
+
+async def test_get_followed_artists_does_not_show_genres() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/following"): {
+                "artists": {
+                    "items": [{"name": "Radiohead", "id": "a1", "genres": ["rock"]}],
+                    "total": 1,
+                }
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_followed_artists", {}))
+    assert "- Radiohead (ID: a1)" in text
+    assert "rock" not in text
+
+
+async def test_get_my_top_items_does_not_show_genres() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/top/artists"): {
+                "items": [{"name": "Radiohead", "id": "a1", "genres": ["rock"]}],
+                "total": 1,
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_my_top_items", {"item_type": "artists"}))
+    assert "1. Radiohead (ID: a1)" in text
+    assert "rock" not in text
+
+
+async def test_top_artists_resource_does_not_show_genres() -> None:
+    from spotify_mcp import resources as resources_mod
+
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/top/artists"): {"items": [{"name": "Radiohead", "genres": ["rock"]}]}
+        }
+    )
+    resources_mod.register(mcp, client)  # type: ignore[arg-type]
+    contents = await mcp.read_resource("spotify://me/top/artists")
+    text = "\n".join(getattr(c, "content", str(c)) for c in contents)
+    assert "1. Radiohead" in text
+    assert "rock" not in text
+
+
 # ---------------- resources / prompts registration ----------------
 
 

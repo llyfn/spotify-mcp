@@ -190,7 +190,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for p in items:
             owner = p.get("owner", {}).get("display_name", "Unknown")
-            count = p.get("items", {}).get("total", 0)
+            count = (p.get("items") or {}).get("total", 0)
             lines.append(f"- {p['name']} ({count} tracks, by {owner}) (ID: {p['id']})")
         total = data.get("total", len(items))
         return paged_list("Your playlists", lines, total, offset)

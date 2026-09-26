@@ -383,6 +383,28 @@ async def test_get_my_playlists_counts_from_items_ref() -> None:
     assert "(7 tracks, by A)" in text
 
 
+async def test_get_my_playlists_handles_null_items() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/playlists"): {
+                "total": 1,
+                "items": [
+                    {
+                        "id": "PL",
+                        "name": "Null",
+                        "owner": {"display_name": "A"},
+                        "items": None,
+                    }
+                ],
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_my_playlists", {}))
+    assert "(0 tracks, by A)" in text
+
+
 # ---------------- removed fields ----------------
 
 

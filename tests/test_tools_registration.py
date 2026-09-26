@@ -166,6 +166,7 @@ async def test_get_track_tool_formats_response() -> None:
                 "track_number": 1,
                 "explicit": False,
                 "external_urls": {"spotify": "https://open.spotify.com/track/abc"},
+                "popularity": 90,
             }
         }
     )
@@ -177,6 +178,7 @@ async def test_get_track_tool_formats_response() -> None:
     assert "Album: 25" in text
     assert "Duration: 4:55" in text
     assert "https://open.spotify.com/track/abc" in text
+    assert "Popularity" not in text
 
 
 def _flatten(call_tool_result: Any) -> str:

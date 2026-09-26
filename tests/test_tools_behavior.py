@@ -408,6 +408,25 @@ async def test_get_my_playlists_handles_null_items() -> None:
 # ---------------- removed fields ----------------
 
 
+async def test_get_album_does_not_show_popularity() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/albums/al1"): {
+                "name": "25",
+                "artists": [{"name": "Adele"}],
+                "release_date": "2015-11-20",
+                "total_tracks": 11,
+                "popularity": 88,
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_album", {"album_id": "al1"}))
+    assert "Album: 25" in text
+    assert "Popularity" not in text
+
+
 async def test_search_artists_does_not_show_follower_count() -> None:
     mcp = FastMCP("test")
     client = StubClient(

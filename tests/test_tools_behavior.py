@@ -349,6 +349,55 @@ async def test_get_my_playlists_counts_from_items_ref() -> None:
     assert "(7 tracks, by A)" in text
 
 
+# ---------------- removed fields ----------------
+
+
+async def test_search_artists_does_not_show_follower_count() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/search"): {
+                "artists": {"total": 1, "items": [{"id": "a1", "name": "Radiohead"}]}
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("search", {"query": "x", "types": "artist"}))
+    assert "Radiohead (ID: a1)" in text
+    assert "followers" not in text
+
+
+async def test_get_episode_does_not_show_publisher_placeholder() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={("GET", "/episodes/e1"): {"name": "Ep", "show": {"name": "Pod"}}}
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_episode", {"episode_id": "e1"}))
+    assert "Show: Pod" in text
+    assert "Unknown" not in text
+
+
+async def test_get_audiobook_does_not_show_publisher() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(responses={("GET", "/audiobooks/b1"): {"name": "Book"}})
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_audiobook", {"audiobook_id": "b1"}))
+    assert "Publisher" not in text
+
+
+async def test_get_saved_shows_does_not_show_publisher_placeholder() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/shows"): {"total": 1, "items": [{"show": {"id": "s1", "name": "Pod"}}]}
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_saved_shows", {}))
+    assert "- Pod (ID: s1)" in text
+
+
 # ---------------- resources / prompts registration ----------------
 
 

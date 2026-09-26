@@ -22,10 +22,6 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = [f"Artist: {data.get('name')}"]
         if data.get("genres"):
             lines.append(f"Genres: {', '.join(data['genres'])}")
-        if data.get("followers"):
-            lines.append(f"Followers: {data['followers'].get('total', 0):,}")
-        if data.get("popularity") is not None:
-            lines.append(f"Popularity: {data['popularity']}")
         lines.append(f"URL: {data.get('external_urls', {}).get('spotify', 'N/A')}")
         return "\n".join(lines)
 

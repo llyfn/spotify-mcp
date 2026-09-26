@@ -64,9 +64,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for item in items:
             show = item.get("show", {})
-            lines.append(
-                f"- {show.get('name')} by {show.get('publisher', 'Unknown')} (ID: {show.get('id')})"
-            )
+            lines.append(f"- {show.get('name')} (ID: {show.get('id')})")
         total = data.get("total", len(items))
         return paged_list("Saved shows", lines, total, offset)
 

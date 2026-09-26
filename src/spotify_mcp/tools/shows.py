@@ -26,8 +26,6 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         for i, ep in enumerate(episodes[:10], start=1):
             episode_lines.append(f"  {i}. {ep.get('name')} ({ep.get('release_date', 'N/A')})")
         lines = [f"Show: {data.get('name')}"]
-        if data.get("publisher"):
-            lines.append(f"Publisher: {data['publisher']}")
         lines.append(f"Description: {data.get('description', 'N/A')}")
         lines.append(f"Total Episodes: {data.get('total_episodes', 'N/A')}")
         if data.get("languages"):
@@ -81,7 +79,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         duration = format_duration_min(data.get("duration_ms", 0))
         lines = [
             f"Episode: {data.get('name')}",
-            f"Show: {show.get('name', 'N/A')} (by {show.get('publisher', 'Unknown')})",
+            f"Show: {show.get('name', 'N/A')}",
             f"Release Date: {data.get('release_date', 'N/A')}",
             f"Duration: {duration}",
             f"Description: {data.get('description', 'N/A')}",

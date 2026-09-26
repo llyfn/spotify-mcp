@@ -163,7 +163,6 @@ async def test_get_track_tool_formats_response() -> None:
                 "artists": [{"name": "Adele"}],
                 "album": {"name": "25"},
                 "duration_ms": 295000,  # 4:55
-                "popularity": 90,
                 "track_number": 1,
                 "explicit": False,
                 "external_urls": {"spotify": "https://open.spotify.com/track/abc"},
@@ -177,7 +176,6 @@ async def test_get_track_tool_formats_response() -> None:
     assert "Artist(s): Adele" in text
     assert "Album: 25" in text
     assert "Duration: 4:55" in text
-    assert "Popularity: 90" in text
     assert "https://open.spotify.com/track/abc" in text
 
 

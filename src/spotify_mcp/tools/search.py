@@ -23,7 +23,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             query: Search query. Supports filters: artist:, album:, track:, year:, genre:,
                 isrc: (track ISRC), upc: (album UPC). Use NOT/OR with quotes for refinement.
             types: Comma-separated types: track, album, artist, playlist, show, episode, audiobook.
-            limit: Maximum results per type (1-50, default 10).
+            limit: Maximum results per type (1-10, default 10).
             offset: Index of first result to return (default 0).
             market: ISO 3166-1 alpha-2 country code to filter results.
         """
@@ -67,8 +67,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             if artist_items:
                 lines = []
                 for a in artist_items:
-                    followers = a.get("followers", {}).get("total", 0)
-                    lines.append(f"  - {a['name']} ({followers:,} followers) (ID: {a['id']})")
+                    lines.append(f"  - {a['name']} (ID: {a['id']})")
                 sections.append(
                     f"Artists ({data['artists'].get('total', 0)} total):\n" + "\n".join(lines)
                 )
@@ -87,10 +86,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         if "shows" in data:
             show_items = data["shows"].get("items", [])
             if show_items:
-                lines = [
-                    f"  - {s['name']} by {s.get('publisher', 'Unknown')} (ID: {s['id']})"
-                    for s in show_items
-                ]
+                lines = [f"  - {s['name']} (ID: {s['id']})" for s in show_items]
                 sections.append(
                     f"Shows ({data['shows'].get('total', 0)} total):\n" + "\n".join(lines)
                 )

@@ -27,7 +27,6 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             f"Audiobook: {data.get('name')}\n"
             f"Author(s): {authors}\n"
             f"Narrator(s): {narrators}\n"
-            f"Publisher: {data.get('publisher', 'Unknown')}\n"
             f"Description: {data.get('description', 'N/A')}\n"
             f"Total Chapters: {data.get('total_chapters', 'N/A')}\n"
             f"Languages: {', '.join(data.get('languages', []))}\n"

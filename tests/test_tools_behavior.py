@@ -1,7 +1,7 @@
 """Focused tests for the new tool behaviors:
 
 - chunking on large playlist/library mutations
-- follow/unfollow flow
+- followed-artists cursor
 - market parameter threading
 - recently_played cursor pagination
 - batch lookups
@@ -139,69 +139,11 @@ async def test_remove_from_library_unfollows_playlist_by_uri(
 # ---------------- follow tools ----------------
 
 
-async def test_follow_artists_calls_correct_endpoint(
-    mcp_setup: tuple[FastMCP, StubClient],
-) -> None:
-    mcp, client = mcp_setup
-    await mcp.call_tool(
-        "follow_artists_or_users",
-        {"follow_type": "artist", "ids": ["a1", "a2", "a3"]},
-    )
-    method, path, params, _ = client.calls[0]
-    assert method == "PUT"
-    assert path == "/me/following"
-    assert params == {"type": "artist", "ids": "a1,a2,a3"}
-
-
-async def test_unfollow_users_chunks_at_50(mcp_setup: tuple[FastMCP, StubClient]) -> None:
-    mcp, client = mcp_setup
-    ids = [f"u{i}" for i in range(120)]
-    await mcp.call_tool("unfollow_artists_or_users", {"follow_type": "user", "ids": ids})
-    deletes = [c for c in client.calls if c[0] == "DELETE"]
-    assert len(deletes) == 3
-
-
-async def test_follow_validates_type(mcp_setup: tuple[FastMCP, StubClient]) -> None:
-    mcp, client = mcp_setup
-    result = await mcp.call_tool(
-        "follow_artists_or_users",
-        {"follow_type": "playlist", "ids": ["x"]},
-    )
-    assert "Invalid type" in _flatten(result)
-    # And no API call should have been made.
-    assert client.calls == []
-
-
-async def test_check_following_merges_chunks() -> None:
-    mcp = FastMCP("test")
-
-    def respond(call_idx: int) -> list[bool]:
-        return [True, False] * 25 if call_idx == 0 else [True, True, False]
-
-    client = StubClient(responses={("GET", "/me/following/contains"): respond})
-    register_all_tools(mcp, client)  # type: ignore[arg-type]
-
-    ids = [f"a{i}" for i in range(53)]
-    result = await mcp.call_tool("check_following", {"follow_type": "artist", "ids": ids})
-    text = _flatten(result)
-    assert text.count(": following") == 25 + 2  # 25 True from first chunk + 2 True from second
-    assert text.count(": not following") == 25 + 1
-
-
 async def test_get_followed_artists_passes_cursor(mcp_setup: tuple[FastMCP, StubClient]) -> None:
     mcp, client = mcp_setup
     await mcp.call_tool("get_followed_artists", {"limit": 30, "after": "abc"})
     _, _, params, _ = client.calls[0]
     assert params == {"type": "artist", "limit": 30, "after": "abc"}
-
-
-async def test_follow_playlist_sends_public_in_body(mcp_setup: tuple[FastMCP, StubClient]) -> None:
-    mcp, client = mcp_setup
-    await mcp.call_tool("follow_playlist", {"playlist_id": "PL", "public": False})
-    method, path, _, body = client.calls[0]
-    assert method == "PUT"
-    assert path == "/playlists/PL/followers"
-    assert body == {"public": False}
 
 
 # ---------------- market threading ----------------

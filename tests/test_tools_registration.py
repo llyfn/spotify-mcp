@@ -7,6 +7,14 @@ from mcp.server.fastmcp import FastMCP
 
 from spotify_mcp.tools import register_all_tools
 
+REMOVED_TOOLS = {
+    "follow_artists_or_users",
+    "unfollow_artists_or_users",
+    "check_following",
+    "follow_playlist",
+    "unfollow_playlist",
+}
+
 
 class StubClient:
     """Records calls instead of hitting the network."""
@@ -65,12 +73,7 @@ async def test_register_all_tools_registers_expected_tools(
         "get_chapters",
         "get_saved_tracks",
         "whoami",
-        "follow_artists_or_users",
-        "unfollow_artists_or_users",
-        "check_following",
         "get_followed_artists",
-        "follow_playlist",
-        "unfollow_playlist",
     }
     missing = expected - names
     assert not missing, f"missing tools: {missing}"
@@ -82,6 +85,14 @@ async def test_register_all_tools_makes_tools_unique(
     mcp, _ = mcp_with_tools
     names = [t.name for t in await mcp.list_tools()]
     assert len(names) == len(set(names))
+
+
+async def test_tools_backed_by_removed_endpoints_are_not_registered(
+    mcp_with_tools: tuple[FastMCP, StubClient],
+) -> None:
+    mcp, _ = mcp_with_tools
+    names = {t.name for t in await mcp.list_tools()}
+    assert not (REMOVED_TOOLS & names)
 
 
 async def test_search_tool_calls_correct_endpoint() -> None:

@@ -101,11 +101,14 @@ class SpotifyClient:
                     )
                     await asyncio.sleep(wait_time)
                     continue
-                raise SpotifyAPIError(
-                    429,
-                    f"Rate limited (retry after {retry_after}s)",
-                    retry_after=retry_after,
-                )
+                if self._extract_error_reason(response) == "QUOTA_EXCEEDED":
+                    message = (
+                        "Quota exceeded. Development-mode quota is shared by every Client ID "
+                        f"on the developer account (retry after {retry_after}s)"
+                    )
+                else:
+                    message = f"Rate limited (retry after {retry_after}s)"
+                raise SpotifyAPIError(429, message, retry_after=retry_after)
 
             error_message = self._extract_error_message(response)
             if response.status_code == 403:
@@ -134,3 +137,12 @@ class SpotifyClient:
         if error is not None:
             return str(error)
         return response.text or f"HTTP {response.status_code}"
+
+    @staticmethod
+    def _extract_error_reason(response: httpx.Response) -> str | None:
+        try:
+            data = response.json()
+        except ValueError:
+            return None
+        error = data.get("error") if isinstance(data, dict) else None
+        return error.get("reason") if isinstance(error, dict) else None

@@ -47,3 +47,8 @@ def test_all_scopes_includes_required_scopes() -> None:
         "playlist-modify-private",
     ):
         assert scope in config.ALL_SCOPES
+
+
+def test_all_scopes_excludes_user_read_email() -> None:
+    # GET /me no longer returns email, so the scope grants nothing.
+    assert "user-read-email" not in config.ALL_SCOPES.split()

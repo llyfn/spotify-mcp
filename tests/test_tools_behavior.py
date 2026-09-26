@@ -251,6 +251,38 @@ async def test_toggle_shuffle_flips_when_state_omitted() -> None:
     assert set_call[2]["state"] == "false"
 
 
+# ---------------- profile ----------------
+
+_PROFILE = {
+    "display_name": "Alice",
+    "id": "alice",
+    "account_id": "aB3dE5fG7h",
+    "external_urls": {"spotify": "https://open.spotify.com/user/alice"},
+}
+
+
+async def test_get_my_profile_shows_account_id_and_no_removed_fields() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(responses={("GET", "/me"): _PROFILE})
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_my_profile", {}))
+    assert "Account ID: aB3dE5fG7h" in text
+    for removed in ("Email", "Country", "Product", "Followers"):
+        assert removed not in text
+
+
+async def test_profile_resource_shows_account_id() -> None:
+    from spotify_mcp import resources as resources_mod
+
+    mcp = FastMCP("test")
+    client = StubClient(responses={("GET", "/me"): _PROFILE})
+    resources_mod.register(mcp, client)  # type: ignore[arg-type]
+    contents = await mcp.read_resource("spotify://me/profile")
+    text = "\n".join(getattr(c, "content", str(c)) for c in contents)
+    assert "Account ID: aB3dE5fG7h" in text
+    assert "Plan" not in text
+
+
 # ---------------- whoami ----------------
 
 
@@ -258,7 +290,7 @@ async def test_whoami_includes_profile_and_scopes() -> None:
     mcp = FastMCP("test")
     client = StubClient(
         responses={
-            ("GET", "/me"): {"display_name": "Alice", "id": "alice", "country": "US"},
+            ("GET", "/me"): {"display_name": "Alice", "id": "alice", "account_id": "aB3"},
             ("GET", "/me/player/devices"): {
                 "devices": [
                     {"name": "Laptop", "type": "Computer", "is_active": True, "volume_percent": 70},
@@ -272,6 +304,8 @@ async def test_whoami_includes_profile_and_scopes() -> None:
     assert "Alice" in text
     assert "Active device: Laptop" in text
     assert "user-read-private" in text
+    assert "Account ID: aB3" in text
+    assert "Country" not in text
 
 
 # ---------------- playlist fields ----------------

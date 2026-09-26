@@ -24,9 +24,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         return (
             f"User: {data.get('display_name', 'N/A')}\n"
             f"ID: {data.get('id')}\n"
-            f"Country: {data.get('country', 'N/A')}\n"
-            f"Plan: {data.get('product', 'N/A')}\n"
-            f"Followers: {data.get('followers', {}).get('total', 0):,}"
+            f"Account ID: {data.get('account_id', 'N/A')}"
         )
 
     @mcp.resource("spotify://me/playback", mime_type="text/plain")

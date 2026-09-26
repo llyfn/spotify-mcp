@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from spotify_mcp.client import SpotifyClient
 
 
-_LIBRARY_MAX_PER_REQUEST = 50
+_LIBRARY_MAX_PER_REQUEST = 40
 
 
 def register(mcp: FastMCP, client: SpotifyClient) -> None:
@@ -107,12 +107,13 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
 
     @mcp.tool()
     async def save_to_library(uris: list[str]) -> str:
-        """Save items (tracks/albums/shows/episodes/audiobooks) to the user's library.
+        """Save items to the user's library, or follow artists, users, and playlists.
 
-        Auto-chunks at 50 items per request.
+        Auto-chunks at 40 URIs per request.
 
         Args:
-            uris: List of Spotify URIs to save (e.g. ["spotify:track:xxx"]).
+            uris: Spotify URIs: track, album, episode, show, audiobook, artist, user, or
+                playlist (e.g. ["spotify:track:xxx", "spotify:artist:yyy"]).
         """
         if not uris:
             return "No URIs provided."
@@ -124,10 +125,13 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
 
     @mcp.tool()
     async def remove_from_library(uris: list[str]) -> str:
-        """Remove items from the current user's library. Auto-chunks at 50 items per request.
+        """Remove items from the user's library, or unfollow artists, users, and playlists.
+
+        Auto-chunks at 40 URIs per request.
 
         Args:
-            uris: List of Spotify URIs to remove (e.g. ["spotify:track:xxx"]).
+            uris: Spotify URIs: track, album, episode, show, audiobook, artist, user, or
+                playlist (e.g. ["spotify:track:xxx", "spotify:playlist:yyy"]).
         """
         if not uris:
             return "No URIs provided."
@@ -139,12 +143,14 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
 
     @mcp.tool()
     async def check_saved_in_library(uris: list[str]) -> str:
-        """Check if items are saved in the current user's library.
+        """Check whether items are saved in the user's library, or artists/users/playlists
+        are followed.
 
-        Auto-chunks at 50 items per request.
+        Auto-chunks at 40 URIs per request.
 
         Args:
-            uris: List of Spotify URIs to check (e.g. ["spotify:track:xxx"]).
+            uris: Spotify URIs: track, album, episode, show, audiobook, artist, user, or
+                playlist (e.g. ["spotify:track:xxx", "spotify:artist:yyy"]).
         """
         if not uris:
             return "No URIs provided."

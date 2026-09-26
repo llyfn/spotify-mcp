@@ -96,14 +96,14 @@ async def test_add_playlist_items_chunked_with_position(
     assert posts[1][3]["position"] == 110
 
 
-async def test_save_to_library_chunks_at_50(mcp_setup: tuple[FastMCP, StubClient]) -> None:
+async def test_save_to_library_chunks_at_40(mcp_setup: tuple[FastMCP, StubClient]) -> None:
     mcp, client = mcp_setup
-    uris = [f"spotify:track:t{i}" for i in range(120)]
+    uris = [f"spotify:track:t{i}" for i in range(100)]
     await mcp.call_tool("save_to_library", {"uris": uris})
 
     puts = [c for c in client.calls if c[0] == "PUT" and c[1] == "/me/library"]
     assert len(puts) == 3
-    assert len(puts[0][2]["uris"].split(",")) == 50
+    assert len(puts[0][2]["uris"].split(",")) == 40
     assert len(puts[2][2]["uris"].split(",")) == 20
 
 
@@ -111,8 +111,7 @@ async def test_check_saved_in_library_merges_chunked_results() -> None:
     mcp = FastMCP("test")
 
     def respond(call_idx: int) -> list[bool]:
-        # First call (50 items): all True. Second call (10 items): all False.
-        return [True] * 50 if call_idx == 0 else [False] * 10
+        return [True] * 40 if call_idx == 0 else [False] * 20
 
     client = StubClient(responses={("GET", "/me/library/contains"): respond})
     register_all_tools(mcp, client)  # type: ignore[arg-type]
@@ -120,9 +119,21 @@ async def test_check_saved_in_library_merges_chunked_results() -> None:
     uris = [f"spotify:track:t{i}" for i in range(60)]
     result = await mcp.call_tool("check_saved_in_library", {"uris": uris})
     text = _flatten(result)
-    # First 50 saved, last 10 not saved.
-    assert text.count(": saved") == 50
-    assert text.count(": not saved") == 10
+    assert text.count(": saved") == 40
+    assert text.count(": not saved") == 20
+
+
+async def test_remove_from_library_unfollows_playlist_by_uri(
+    mcp_setup: tuple[FastMCP, StubClient],
+) -> None:
+    mcp, client = mcp_setup
+    await mcp.call_tool(
+        "remove_from_library",
+        {"uris": ["spotify:playlist:PL", "spotify:user:alice"]},
+    )
+    method, path, params, _ = client.calls[0]
+    assert (method, path) == ("DELETE", "/me/library")
+    assert params == {"uris": "spotify:playlist:PL,spotify:user:alice"}
 
 
 # ---------------- follow tools ----------------

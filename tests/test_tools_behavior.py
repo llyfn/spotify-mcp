@@ -274,6 +274,81 @@ async def test_whoami_includes_profile_and_scopes() -> None:
     assert "user-read-private" in text
 
 
+# ---------------- playlist fields ----------------
+
+
+async def test_get_playlist_reads_items_not_deprecated_tracks() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/playlists/PL"): {
+                "name": "Mine",
+                "owner": {"display_name": "Alice"},
+                "public": True,
+                "items": {
+                    "total": 1,
+                    "items": [{"item": {"name": "Song", "artists": [{"name": "A"}]}}],
+                },
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_playlist", {"playlist_id": "PL"}))
+    assert "Total Tracks: 1" in text
+    assert "1. Song - A" in text
+    assert "Followers" not in text
+
+
+async def test_get_playlist_without_items_says_items_unavailable() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={("GET", "/playlists/PL"): {"name": "Theirs", "owner": {"display_name": "Bob"}}}
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_playlist", {"playlist_id": "PL"}))
+    assert "Items: not available" in text
+    assert "Total Tracks" not in text
+
+
+async def test_get_playlist_items_reads_item_not_deprecated_track() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/playlists/PL/items"): {
+                "total": 1,
+                "items": [
+                    {"item": {"name": "Song", "artists": [{"name": "A"}]}, "added_by": {"id": "u"}}
+                ],
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_playlist_items", {"playlist_id": "PL"}))
+    assert "1. Song - A (added by: u)" in text
+
+
+async def test_get_my_playlists_counts_from_items_ref() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/playlists"): {
+                "total": 1,
+                "items": [
+                    {
+                        "id": "PL",
+                        "name": "Mine",
+                        "owner": {"display_name": "A"},
+                        "items": {"total": 7},
+                    }
+                ],
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_my_playlists", {}))
+    assert "(7 tracks, by A)" in text
+
+
 # ---------------- resources / prompts registration ----------------
 
 

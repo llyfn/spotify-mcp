@@ -28,12 +28,12 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         params = {"market": market} if market else None
         data = await client.get(f"/playlists/{playlist_id}", params=params)
         owner = data.get("owner", {}).get("display_name", "Unknown")
-        items_paged = data.get("tracks", {})
-        total = items_paged.get("total", 0)
-        items = items_paged.get("items", [])
+        items_paged = data.get("items")
+        total = (items_paged or {}).get("total", 0)
+        items = (items_paged or {}).get("items", [])
         track_lines = []
         for i, entry in enumerate(items[:20], start=1):
-            item = entry.get("track")
+            item = entry.get("item")
             if item:
                 artists = ", ".join(a["name"] for a in item.get("artists", []))
                 track_lines.append(f"  {i}. {item['name']} - {artists}")
@@ -43,10 +43,11 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             f"Description: {data.get('description', 'N/A')}",
             f"Public: {data.get('public')}",
         ]
-        followers = data.get("followers")
-        if followers and followers.get("total") is not None:
-            lines.append(f"Followers: {followers['total']:,}")
-        lines.append(f"Total Tracks: {total}")
+        # Spotify returns `items` only for playlists the user owns or collaborates on.
+        if items_paged is None:
+            lines.append("Items: not available for playlists you don't own or collaborate on")
+        else:
+            lines.append(f"Total Tracks: {total}")
         lines.append(f"URL: {data.get('external_urls', {}).get('spotify', 'N/A')}")
         result = "\n".join(lines)
         if track_lines:
@@ -103,7 +104,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, entry in enumerate(items, start=offset + 1):
-            item = entry.get("track")
+            item = entry.get("item")
             if item:
                 artists = ", ".join(a["name"] for a in item.get("artists", []))
                 added_by = entry.get("added_by", {}).get("id", "unknown")
@@ -189,7 +190,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for p in items:
             owner = p.get("owner", {}).get("display_name", "Unknown")
-            count = p.get("tracks", {}).get("total", 0)
+            count = p.get("items", {}).get("total", 0)
             lines.append(f"- {p['name']} ({count} tracks, by {owner}) (ID: {p['id']})")
         total = data.get("total", len(items))
         return paged_list("Your playlists", lines, total, offset)

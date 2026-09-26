@@ -53,7 +53,7 @@ def register(mcp: FastMCP) -> None:
         return (
             f"Build a playlist seeded by these artists: {artists}.\n"
             f"For each artist, pick about {tracks_per_artist} representative tracks "
-            "(prefer popular ones unless the user already knows them).\n"
+            "(prefer well-known or recent tracks unless the user already knows them).\n"
             "Steps:\n"
             "1. For each artist name, call `search` (types=artist, limit=1) to "
             "get the canonical artist ID.\n"

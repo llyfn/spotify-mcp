@@ -4,7 +4,6 @@
 - followed-artists cursor
 - market parameter threading
 - recently_played cursor pagination
-- batch lookups
 - episode-aware player formatting
 - whoami diagnostic
 """
@@ -195,57 +194,6 @@ async def test_recently_played_rejects_both_cursors(
     result = await mcp.call_tool("get_recently_played", {"after": 1, "before": 2})
     assert "Specify only one" in _flatten(result)
     assert client.calls == []
-
-
-# ---------------- batch lookups ----------------
-
-
-async def test_get_tracks_batches_via_ids_param() -> None:
-    mcp = FastMCP("test")
-    client = StubClient(
-        responses={
-            ("GET", "/tracks"): {
-                "tracks": [
-                    {"id": "t1", "name": "One", "artists": [{"name": "A"}], "duration_ms": 60_000},
-                    {"id": "t2", "name": "Two", "artists": [{"name": "B"}], "duration_ms": 90_000},
-                ]
-            }
-        }
-    )
-    register_all_tools(mcp, client)  # type: ignore[arg-type]
-    result = await mcp.call_tool("get_tracks", {"track_ids": ["t1", "t2"]})
-    _, path, params, _ = client.calls[0]
-    assert path == "/tracks"
-    assert params == {"ids": "t1,t2"}
-    text = _flatten(result)
-    assert "One" in text and "Two" in text
-
-
-async def test_get_albums_rejects_over_limit(mcp_setup: tuple[FastMCP, StubClient]) -> None:
-    mcp, client = mcp_setup
-    ids = [f"a{i}" for i in range(21)]
-    result = await mcp.call_tool("get_albums", {"album_ids": ids})
-    assert "Max is 20" in _flatten(result)
-    assert client.calls == []
-
-
-async def test_get_artists_handles_missing_entries() -> None:
-    mcp = FastMCP("test")
-    client = StubClient(
-        responses={
-            ("GET", "/artists"): {
-                "artists": [
-                    {"id": "x1", "name": "Real", "followers": {"total": 100}, "genres": []},
-                    None,  # Spotify returns null for missing IDs
-                ]
-            }
-        }
-    )
-    register_all_tools(mcp, client)  # type: ignore[arg-type]
-    result = await mcp.call_tool("get_artists", {"artist_ids": ["x1", "x2"]})
-    text = _flatten(result)
-    assert "Real" in text
-    assert "(not found)" in text
 
 
 # ---------------- player episode-awareness ----------------

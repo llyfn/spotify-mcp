@@ -10,10 +10,6 @@ if TYPE_CHECKING:
     from spotify_mcp.client import SpotifyClient
 
 
-_AUDIOBOOKS_MAX_IDS = 50
-_CHAPTERS_MAX_IDS = 50
-
-
 def register(mcp: FastMCP, client: SpotifyClient) -> None:
     @mcp.tool()
     async def get_audiobook(audiobook_id: str, market: str | None = None) -> str:
@@ -37,32 +33,6 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             f"Languages: {', '.join(data.get('languages', []))}\n"
             f"URL: {data.get('external_urls', {}).get('spotify', 'N/A')}"
         )
-
-    @mcp.tool()
-    async def get_audiobooks(audiobook_ids: list[str], market: str | None = None) -> str:
-        """Get details of multiple audiobooks in one call (up to 50 IDs).
-
-        Args:
-            audiobook_ids: List of Spotify audiobook IDs (max 50).
-            market: ISO 3166-1 alpha-2 country code.
-        """
-        if not audiobook_ids:
-            return "No audiobook IDs provided."
-        if len(audiobook_ids) > _AUDIOBOOKS_MAX_IDS:
-            return f"Too many IDs: {len(audiobook_ids)}. Max is {_AUDIOBOOKS_MAX_IDS}."
-        params: dict = {"ids": ",".join(audiobook_ids)}
-        if market:
-            params["market"] = market
-        data = await client.get("/audiobooks", params=params)
-        audiobooks = data.get("audiobooks", [])
-        lines = []
-        for ab in audiobooks:
-            if not ab:
-                lines.append("- (not found)")
-                continue
-            authors = ", ".join(a["name"] for a in ab.get("authors", []))
-            lines.append(f"- {ab.get('name')} by {authors} (ID: {ab.get('id')})")
-        return f"Audiobooks ({len(lines)}):\n" + "\n".join(lines)
 
     @mcp.tool()
     async def get_audiobook_chapters(
@@ -111,33 +81,3 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             f"Description: {data.get('description', 'N/A')}\n"
             f"URL: {data.get('external_urls', {}).get('spotify', 'N/A')}"
         )
-
-    @mcp.tool()
-    async def get_chapters(chapter_ids: list[str], market: str | None = None) -> str:
-        """Get details of multiple chapters in one call (up to 50 IDs).
-
-        Args:
-            chapter_ids: List of Spotify chapter IDs (max 50).
-            market: ISO 3166-1 alpha-2 country code.
-        """
-        if not chapter_ids:
-            return "No chapter IDs provided."
-        if len(chapter_ids) > _CHAPTERS_MAX_IDS:
-            return f"Too many IDs: {len(chapter_ids)}. Max is {_CHAPTERS_MAX_IDS}."
-        params: dict = {"ids": ",".join(chapter_ids)}
-        if market:
-            params["market"] = market
-        data = await client.get("/chapters", params=params)
-        chapters = data.get("chapters", [])
-        lines = []
-        for ch in chapters:
-            if not ch:
-                lines.append("- (not found)")
-                continue
-            audiobook = ch.get("audiobook") or {}
-            duration = format_duration_min(ch.get("duration_ms", 0))
-            lines.append(
-                f"- {ch.get('name')} from {audiobook.get('name', 'N/A')} "
-                f"({duration}) (ID: {ch.get('id')})"
-            )
-        return f"Chapters ({len(lines)}):\n" + "\n".join(lines)

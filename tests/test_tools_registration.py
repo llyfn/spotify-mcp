@@ -13,6 +13,13 @@ REMOVED_TOOLS = {
     "check_following",
     "follow_playlist",
     "unfollow_playlist",
+    "get_albums",
+    "get_artists",
+    "get_tracks",
+    "get_shows",
+    "get_episodes",
+    "get_audiobooks",
+    "get_chapters",
 }
 
 
@@ -59,18 +66,15 @@ async def test_register_all_tools_registers_expected_tools(
     expected = {
         "search",
         "get_track",
-        "get_tracks",
         "get_album",
-        "get_albums",
         "get_artist",
-        "get_artists",
         "get_playlist",
         "get_my_profile",
         "get_playback_state",
         "get_show",
         "get_episode",
         "get_audiobook",
-        "get_chapters",
+        "get_chapter",
         "get_saved_tracks",
         "whoami",
         "get_followed_artists",

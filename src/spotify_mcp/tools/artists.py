@@ -10,9 +10,6 @@ if TYPE_CHECKING:
     from spotify_mcp.client import SpotifyClient
 
 
-_ARTISTS_MAX_IDS = 50
-
-
 def register(mcp: FastMCP, client: SpotifyClient) -> None:
     @mcp.tool()
     async def get_artist(artist_id: str) -> str:
@@ -31,31 +28,6 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             lines.append(f"Popularity: {data['popularity']}")
         lines.append(f"URL: {data.get('external_urls', {}).get('spotify', 'N/A')}")
         return "\n".join(lines)
-
-    @mcp.tool()
-    async def get_artists(artist_ids: list[str]) -> str:
-        """Get details of multiple artists in one call (up to 50 IDs).
-
-        Args:
-            artist_ids: List of Spotify artist IDs (max 50).
-        """
-        if not artist_ids:
-            return "No artist IDs provided."
-        if len(artist_ids) > _ARTISTS_MAX_IDS:
-            return f"Too many IDs: {len(artist_ids)}. Max is {_ARTISTS_MAX_IDS}."
-        data = await client.get("/artists", params={"ids": ",".join(artist_ids)})
-        artists = data.get("artists", [])
-        lines = []
-        for a in artists:
-            if not a:
-                lines.append("- (not found)")
-                continue
-            followers = a.get("followers", {}).get("total", 0)
-            genres = ", ".join(a.get("genres", [])[:3]) or "N/A"
-            lines.append(
-                f"- {a.get('name')} ({genres}, {followers:,} followers) (ID: {a.get('id')})"
-            )
-        return f"Artists ({len(lines)}):\n" + "\n".join(lines)
 
     @mcp.tool()
     async def get_artist_albums(

@@ -86,6 +86,5 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             return "No top artists."
         lines = []
         for i, a in enumerate(items, start=1):
-            genres = ", ".join(a.get("genres", [])[:3]) or "N/A"
-            lines.append(f"{i}. {a.get('name')} ({genres})")
+            lines.append(f"{i}. {a.get('name')}")
         return "Top artists (last ~6 months):\n" + "\n".join(lines)

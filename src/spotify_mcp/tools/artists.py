@@ -20,8 +20,6 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         """
         data = await client.get(f"/artists/{artist_id}")
         lines = [f"Artist: {data.get('name')}"]
-        if data.get("genres"):
-            lines.append(f"Genres: {', '.join(data['genres'])}")
         lines.append(f"URL: {data.get('external_urls', {}).get('spotify', 'N/A')}")
         return "\n".join(lines)
 

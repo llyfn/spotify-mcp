@@ -93,6 +93,13 @@ class SpotifyClient:
             # 429 Rate limited - exponential backoff
             if response.status_code == 429:
                 retry_after = int(response.headers.get("Retry-After", "1"))
+                if self._extract_error_reason(response) == "QUOTA_EXCEEDED":
+                    # Shared account-wide quota won't recover within our retry window.
+                    message = (
+                        "Quota exceeded. Development-mode quota is shared by every Client ID "
+                        f"on the developer account (retry after {retry_after}s)"
+                    )
+                    raise SpotifyAPIError(429, message, retry_after=retry_after)
                 wait_time = max(retry_after, 2**attempt)
                 if attempt < MAX_RETRIES:
                     print(
@@ -101,13 +108,7 @@ class SpotifyClient:
                     )
                     await asyncio.sleep(wait_time)
                     continue
-                if self._extract_error_reason(response) == "QUOTA_EXCEEDED":
-                    message = (
-                        "Quota exceeded. Development-mode quota is shared by every Client ID "
-                        f"on the developer account (retry after {retry_after}s)"
-                    )
-                else:
-                    message = f"Rate limited (retry after {retry_after}s)"
+                message = f"Rate limited (retry after {retry_after}s)"
                 raise SpotifyAPIError(429, message, retry_after=retry_after)
 
             error_message = self._extract_error_message(response)

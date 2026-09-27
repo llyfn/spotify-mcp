@@ -402,7 +402,70 @@ async def test_get_my_playlists_handles_null_items() -> None:
     )
     register_all_tools(mcp, client)  # type: ignore[arg-type]
     text = _flatten(await mcp.call_tool("get_my_playlists", {}))
-    assert "(0 tracks, by A)" in text
+    assert "(track count unavailable, by A)" in text
+
+
+# ---------------- API limits and null entries ----------------
+
+
+async def test_get_artist_albums_default_limit_is_within_api_max(
+    mcp_setup: tuple[FastMCP, StubClient],
+) -> None:
+    mcp, client = mcp_setup
+    await mcp.call_tool("get_artist_albums", {"artist_id": "a1"})
+    _, path, params, _ = client.calls[0]
+    assert path == "/artists/a1/albums"
+    assert params["limit"] == 10
+
+
+async def test_get_show_marks_null_episodes_unavailable() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/shows/s1"): {
+                "name": "Pod",
+                "episodes": {"items": [None, {"name": "Ep2", "release_date": "2026-01-02"}]},
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_show", {"show_id": "s1"}))
+    assert "1. (unavailable)" in text
+    assert "2. Ep2 (2026-01-02)" in text
+
+
+async def test_get_show_episodes_marks_null_entries_unavailable() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/shows/s1/episodes"): {
+                "total": 2,
+                "items": [None, {"id": "e2", "name": "Ep2", "release_date": "2026-01-02"}],
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_show_episodes", {"show_id": "s1"}))
+    assert "showing 1-2 of 2" in text
+    assert "1. (unavailable)" in text
+    assert "2. Ep2 (2026-01-02, 0min) (ID: e2)" in text
+
+
+async def test_search_skips_null_items() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/search"): {
+                "playlists": {
+                    "total": 2,
+                    "items": [None, {"id": "p1", "name": "Lofi", "owner": {"display_name": "Bob"}}],
+                }
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("search", {"query": "lofi", "types": "playlist"}))
+    assert "  - Lofi by Bob (ID: p1)" in text
 
 
 # ---------------- removed fields ----------------

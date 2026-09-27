@@ -93,7 +93,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
 
         Args:
             playlist_id: The Spotify ID of the playlist.
-            limit: Maximum number of items to return (1-100, default 20).
+            limit: Maximum number of items to return (1-50, default 20).
             offset: Index of the first item to return (default 0).
             market: ISO 3166-1 alpha-2 country code.
         """
@@ -190,8 +190,12 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for p in items:
             owner = p.get("owner", {}).get("display_name", "Unknown")
-            count = (p.get("items") or {}).get("total", 0)
-            lines.append(f"- {p['name']} ({count} tracks, by {owner}) (ID: {p['id']})")
+            items_ref = p.get("items")
+            if items_ref:
+                count = f"{items_ref.get('total', 0)} tracks"
+            else:
+                count = "track count unavailable"
+            lines.append(f"- {p['name']} ({count}, by {owner}) (ID: {p['id']})")
         total = data.get("total", len(items))
         return paged_list("Your playlists", lines, total, offset)
 

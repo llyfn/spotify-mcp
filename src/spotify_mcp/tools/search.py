@@ -40,7 +40,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         sections = []
 
         if "tracks" in data:
-            track_items = data["tracks"].get("items", [])
+            track_items = [i for i in data["tracks"].get("items", []) if i]
             if track_items:
                 lines = []
                 for t in track_items:
@@ -51,7 +51,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 )
 
         if "albums" in data:
-            album_items = data["albums"].get("items", [])
+            album_items = [i for i in data["albums"].get("items", []) if i]
             if album_items:
                 lines = []
                 for a in album_items:
@@ -63,7 +63,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 )
 
         if "artists" in data:
-            artist_items = data["artists"].get("items", [])
+            artist_items = [i for i in data["artists"].get("items", []) if i]
             if artist_items:
                 lines = []
                 for a in artist_items:
@@ -73,7 +73,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 )
 
         if "playlists" in data:
-            playlist_items = data["playlists"].get("items", [])
+            playlist_items = [i for i in data["playlists"].get("items", []) if i]
             if playlist_items:
                 lines = []
                 for p in playlist_items:
@@ -84,7 +84,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 )
 
         if "shows" in data:
-            show_items = data["shows"].get("items", [])
+            show_items = [i for i in data["shows"].get("items", []) if i]
             if show_items:
                 lines = [f"  - {s['name']} (ID: {s['id']})" for s in show_items]
                 sections.append(
@@ -92,7 +92,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 )
 
         if "episodes" in data:
-            episode_items = data["episodes"].get("items", [])
+            episode_items = [i for i in data["episodes"].get("items", []) if i]
             if episode_items:
                 lines = [
                     f"  - {e['name']} ({e.get('release_date', 'N/A')}) (ID: {e['id']})"
@@ -103,7 +103,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
                 )
 
         if "audiobooks" in data:
-            audiobook_items = data["audiobooks"].get("items", [])
+            audiobook_items = [i for i in data["audiobooks"].get("items", []) if i]
             if audiobook_items:
                 lines = []
                 for ab in audiobook_items:

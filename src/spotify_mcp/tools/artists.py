@@ -27,7 +27,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
     async def get_artist_albums(
         artist_id: str,
         include_groups: str | None = None,
-        limit: int = 20,
+        limit: int = 10,
         offset: int = 0,
         market: str | None = None,
     ) -> str:
@@ -36,7 +36,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         Args:
             artist_id: The Spotify ID of the artist.
             include_groups: Comma-separated album types: album, single, appears_on, compilation.
-            limit: Maximum number of albums to return (1-50, default 20).
+            limit: Maximum number of albums to return (1-10, default 10).
             offset: Index of the first album to return (default 0).
             market: ISO 3166-1 alpha-2 country code.
         """

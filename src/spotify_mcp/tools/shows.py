@@ -24,6 +24,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         episodes = data.get("episodes", {}).get("items", [])
         episode_lines = []
         for i, ep in enumerate(episodes[:10], start=1):
+            if not ep:
+                episode_lines.append(f"  {i}. (unavailable)")
+                continue
             episode_lines.append(f"  {i}. {ep.get('name')} ({ep.get('release_date', 'N/A')})")
         lines = [f"Show: {data.get('name')}"]
         lines.append(f"Description: {data.get('description', 'N/A')}")
@@ -59,6 +62,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, ep in enumerate(items, start=offset + 1):
+            if not ep:
+                lines.append(f"{i}. (unavailable)")
+                continue
             duration = format_duration_min(ep.get("duration_ms", 0))
             release = ep.get("release_date", "N/A")
             lines.append(f"{i}. {ep.get('name')} ({release}, {duration}) (ID: {ep.get('id')})")

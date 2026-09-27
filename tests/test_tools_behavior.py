@@ -1,10 +1,9 @@
 """Focused tests for the new tool behaviors:
 
 - chunking on large playlist/library mutations
-- follow/unfollow flow
+- followed-artists cursor
 - market parameter threading
 - recently_played cursor pagination
-- batch lookups
 - episode-aware player formatting
 - whoami diagnostic
 """
@@ -96,14 +95,14 @@ async def test_add_playlist_items_chunked_with_position(
     assert posts[1][3]["position"] == 110
 
 
-async def test_save_to_library_chunks_at_50(mcp_setup: tuple[FastMCP, StubClient]) -> None:
+async def test_save_to_library_chunks_at_40(mcp_setup: tuple[FastMCP, StubClient]) -> None:
     mcp, client = mcp_setup
-    uris = [f"spotify:track:t{i}" for i in range(120)]
+    uris = [f"spotify:track:t{i}" for i in range(100)]
     await mcp.call_tool("save_to_library", {"uris": uris})
 
     puts = [c for c in client.calls if c[0] == "PUT" and c[1] == "/me/library"]
     assert len(puts) == 3
-    assert len(puts[0][2]["uris"].split(",")) == 50
+    assert len(puts[0][2]["uris"].split(",")) == 40
     assert len(puts[2][2]["uris"].split(",")) == 20
 
 
@@ -111,8 +110,7 @@ async def test_check_saved_in_library_merges_chunked_results() -> None:
     mcp = FastMCP("test")
 
     def respond(call_idx: int) -> list[bool]:
-        # First call (50 items): all True. Second call (10 items): all False.
-        return [True] * 50 if call_idx == 0 else [False] * 10
+        return [True] * 40 if call_idx == 0 else [False] * 20
 
     client = StubClient(responses={("GET", "/me/library/contains"): respond})
     register_all_tools(mcp, client)  # type: ignore[arg-type]
@@ -120,61 +118,24 @@ async def test_check_saved_in_library_merges_chunked_results() -> None:
     uris = [f"spotify:track:t{i}" for i in range(60)]
     result = await mcp.call_tool("check_saved_in_library", {"uris": uris})
     text = _flatten(result)
-    # First 50 saved, last 10 not saved.
-    assert text.count(": saved") == 50
-    assert text.count(": not saved") == 10
+    assert text.count(": saved") == 40
+    assert text.count(": not saved") == 20
 
 
-# ---------------- follow tools ----------------
-
-
-async def test_follow_artists_calls_correct_endpoint(
+async def test_remove_from_library_unfollows_playlist_by_uri(
     mcp_setup: tuple[FastMCP, StubClient],
 ) -> None:
     mcp, client = mcp_setup
     await mcp.call_tool(
-        "follow_artists_or_users",
-        {"follow_type": "artist", "ids": ["a1", "a2", "a3"]},
+        "remove_from_library",
+        {"uris": ["spotify:playlist:PL", "spotify:user:alice"]},
     )
     method, path, params, _ = client.calls[0]
-    assert method == "PUT"
-    assert path == "/me/following"
-    assert params == {"type": "artist", "ids": "a1,a2,a3"}
+    assert (method, path) == ("DELETE", "/me/library")
+    assert params == {"uris": "spotify:playlist:PL,spotify:user:alice"}
 
 
-async def test_unfollow_users_chunks_at_50(mcp_setup: tuple[FastMCP, StubClient]) -> None:
-    mcp, client = mcp_setup
-    ids = [f"u{i}" for i in range(120)]
-    await mcp.call_tool("unfollow_artists_or_users", {"follow_type": "user", "ids": ids})
-    deletes = [c for c in client.calls if c[0] == "DELETE"]
-    assert len(deletes) == 3
-
-
-async def test_follow_validates_type(mcp_setup: tuple[FastMCP, StubClient]) -> None:
-    mcp, client = mcp_setup
-    result = await mcp.call_tool(
-        "follow_artists_or_users",
-        {"follow_type": "playlist", "ids": ["x"]},
-    )
-    assert "Invalid type" in _flatten(result)
-    # And no API call should have been made.
-    assert client.calls == []
-
-
-async def test_check_following_merges_chunks() -> None:
-    mcp = FastMCP("test")
-
-    def respond(call_idx: int) -> list[bool]:
-        return [True, False] * 25 if call_idx == 0 else [True, True, False]
-
-    client = StubClient(responses={("GET", "/me/following/contains"): respond})
-    register_all_tools(mcp, client)  # type: ignore[arg-type]
-
-    ids = [f"a{i}" for i in range(53)]
-    result = await mcp.call_tool("check_following", {"follow_type": "artist", "ids": ids})
-    text = _flatten(result)
-    assert text.count(": following") == 25 + 2  # 25 True from first chunk + 2 True from second
-    assert text.count(": not following") == 25 + 1
+# ---------------- follow tools ----------------
 
 
 async def test_get_followed_artists_passes_cursor(mcp_setup: tuple[FastMCP, StubClient]) -> None:
@@ -182,15 +143,6 @@ async def test_get_followed_artists_passes_cursor(mcp_setup: tuple[FastMCP, Stub
     await mcp.call_tool("get_followed_artists", {"limit": 30, "after": "abc"})
     _, _, params, _ = client.calls[0]
     assert params == {"type": "artist", "limit": 30, "after": "abc"}
-
-
-async def test_follow_playlist_sends_public_in_body(mcp_setup: tuple[FastMCP, StubClient]) -> None:
-    mcp, client = mcp_setup
-    await mcp.call_tool("follow_playlist", {"playlist_id": "PL", "public": False})
-    method, path, _, body = client.calls[0]
-    assert method == "PUT"
-    assert path == "/playlists/PL/followers"
-    assert body == {"public": False}
 
 
 # ---------------- market threading ----------------
@@ -242,57 +194,6 @@ async def test_recently_played_rejects_both_cursors(
     result = await mcp.call_tool("get_recently_played", {"after": 1, "before": 2})
     assert "Specify only one" in _flatten(result)
     assert client.calls == []
-
-
-# ---------------- batch lookups ----------------
-
-
-async def test_get_tracks_batches_via_ids_param() -> None:
-    mcp = FastMCP("test")
-    client = StubClient(
-        responses={
-            ("GET", "/tracks"): {
-                "tracks": [
-                    {"id": "t1", "name": "One", "artists": [{"name": "A"}], "duration_ms": 60_000},
-                    {"id": "t2", "name": "Two", "artists": [{"name": "B"}], "duration_ms": 90_000},
-                ]
-            }
-        }
-    )
-    register_all_tools(mcp, client)  # type: ignore[arg-type]
-    result = await mcp.call_tool("get_tracks", {"track_ids": ["t1", "t2"]})
-    _, path, params, _ = client.calls[0]
-    assert path == "/tracks"
-    assert params == {"ids": "t1,t2"}
-    text = _flatten(result)
-    assert "One" in text and "Two" in text
-
-
-async def test_get_albums_rejects_over_limit(mcp_setup: tuple[FastMCP, StubClient]) -> None:
-    mcp, client = mcp_setup
-    ids = [f"a{i}" for i in range(21)]
-    result = await mcp.call_tool("get_albums", {"album_ids": ids})
-    assert "Max is 20" in _flatten(result)
-    assert client.calls == []
-
-
-async def test_get_artists_handles_missing_entries() -> None:
-    mcp = FastMCP("test")
-    client = StubClient(
-        responses={
-            ("GET", "/artists"): {
-                "artists": [
-                    {"id": "x1", "name": "Real", "followers": {"total": 100}, "genres": []},
-                    None,  # Spotify returns null for missing IDs
-                ]
-            }
-        }
-    )
-    register_all_tools(mcp, client)  # type: ignore[arg-type]
-    result = await mcp.call_tool("get_artists", {"artist_ids": ["x1", "x2"]})
-    text = _flatten(result)
-    assert "Real" in text
-    assert "(not found)" in text
 
 
 # ---------------- player episode-awareness ----------------
@@ -350,6 +251,38 @@ async def test_toggle_shuffle_flips_when_state_omitted() -> None:
     assert set_call[2]["state"] == "false"
 
 
+# ---------------- profile ----------------
+
+_PROFILE = {
+    "display_name": "Alice",
+    "id": "alice",
+    "account_id": "aB3dE5fG7h",
+    "external_urls": {"spotify": "https://open.spotify.com/user/alice"},
+}
+
+
+async def test_get_my_profile_shows_account_id_and_no_removed_fields() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(responses={("GET", "/me"): _PROFILE})
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_my_profile", {}))
+    assert "Account ID: aB3dE5fG7h" in text
+    for removed in ("Email", "Country", "Product", "Followers"):
+        assert removed not in text
+
+
+async def test_profile_resource_shows_account_id() -> None:
+    from spotify_mcp import resources as resources_mod
+
+    mcp = FastMCP("test")
+    client = StubClient(responses={("GET", "/me"): _PROFILE})
+    resources_mod.register(mcp, client)  # type: ignore[arg-type]
+    contents = await mcp.read_resource("spotify://me/profile")
+    text = "\n".join(getattr(c, "content", str(c)) for c in contents)
+    assert "Account ID: aB3dE5fG7h" in text
+    assert "Plan" not in text
+
+
 # ---------------- whoami ----------------
 
 
@@ -357,7 +290,7 @@ async def test_whoami_includes_profile_and_scopes() -> None:
     mcp = FastMCP("test")
     client = StubClient(
         responses={
-            ("GET", "/me"): {"display_name": "Alice", "id": "alice", "country": "US"},
+            ("GET", "/me"): {"display_name": "Alice", "id": "alice", "account_id": "aB3"},
             ("GET", "/me/player/devices"): {
                 "devices": [
                     {"name": "Laptop", "type": "Computer", "is_active": True, "volume_percent": 70},
@@ -371,6 +304,297 @@ async def test_whoami_includes_profile_and_scopes() -> None:
     assert "Alice" in text
     assert "Active device: Laptop" in text
     assert "user-read-private" in text
+    assert "Account ID: aB3" in text
+    assert "Country" not in text
+
+
+# ---------------- playlist fields ----------------
+
+
+async def test_get_playlist_reads_items_not_deprecated_tracks() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/playlists/PL"): {
+                "name": "Mine",
+                "owner": {"display_name": "Alice"},
+                "public": True,
+                "items": {
+                    "total": 1,
+                    "items": [{"item": {"name": "Song", "artists": [{"name": "A"}]}}],
+                },
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_playlist", {"playlist_id": "PL"}))
+    assert "Total Tracks: 1" in text
+    assert "1. Song - A" in text
+    assert "Followers" not in text
+
+
+async def test_get_playlist_without_items_says_items_unavailable() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={("GET", "/playlists/PL"): {"name": "Theirs", "owner": {"display_name": "Bob"}}}
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_playlist", {"playlist_id": "PL"}))
+    assert "Items: not available" in text
+    assert "Total Tracks" not in text
+
+
+async def test_get_playlist_items_reads_item_not_deprecated_track() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/playlists/PL/items"): {
+                "total": 1,
+                "items": [
+                    {"item": {"name": "Song", "artists": [{"name": "A"}]}, "added_by": {"id": "u"}}
+                ],
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_playlist_items", {"playlist_id": "PL"}))
+    assert "1. Song - A (added by: u)" in text
+
+
+async def test_get_my_playlists_counts_from_items_ref() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/playlists"): {
+                "total": 1,
+                "items": [
+                    {
+                        "id": "PL",
+                        "name": "Mine",
+                        "owner": {"display_name": "A"},
+                        "items": {"total": 7},
+                    }
+                ],
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_my_playlists", {}))
+    assert "(7 tracks, by A)" in text
+
+
+async def test_get_my_playlists_handles_null_items() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/playlists"): {
+                "total": 1,
+                "items": [
+                    {
+                        "id": "PL",
+                        "name": "Null",
+                        "owner": {"display_name": "A"},
+                        "items": None,
+                    }
+                ],
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_my_playlists", {}))
+    assert "(track count unavailable, by A)" in text
+
+
+# ---------------- API limits and null entries ----------------
+
+
+async def test_get_artist_albums_default_limit_is_within_api_max(
+    mcp_setup: tuple[FastMCP, StubClient],
+) -> None:
+    mcp, client = mcp_setup
+    await mcp.call_tool("get_artist_albums", {"artist_id": "a1"})
+    _, path, params, _ = client.calls[0]
+    assert path == "/artists/a1/albums"
+    assert params["limit"] == 10
+
+
+async def test_get_show_marks_null_episodes_unavailable() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/shows/s1"): {
+                "name": "Pod",
+                "episodes": {"items": [None, {"name": "Ep2", "release_date": "2026-01-02"}]},
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_show", {"show_id": "s1"}))
+    assert "1. (unavailable)" in text
+    assert "2. Ep2 (2026-01-02)" in text
+
+
+async def test_get_show_episodes_marks_null_entries_unavailable() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/shows/s1/episodes"): {
+                "total": 2,
+                "items": [None, {"id": "e2", "name": "Ep2", "release_date": "2026-01-02"}],
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_show_episodes", {"show_id": "s1"}))
+    assert "showing 1-2 of 2" in text
+    assert "1. (unavailable)" in text
+    assert "2. Ep2 (2026-01-02, 0min) (ID: e2)" in text
+
+
+async def test_search_skips_null_items() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/search"): {
+                "playlists": {
+                    "total": 2,
+                    "items": [None, {"id": "p1", "name": "Lofi", "owner": {"display_name": "Bob"}}],
+                }
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("search", {"query": "lofi", "types": "playlist"}))
+    assert "  - Lofi by Bob (ID: p1)" in text
+
+
+# ---------------- removed fields ----------------
+
+
+async def test_get_album_does_not_show_popularity() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/albums/al1"): {
+                "name": "25",
+                "artists": [{"name": "Adele"}],
+                "release_date": "2015-11-20",
+                "total_tracks": 11,
+                "popularity": 88,
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_album", {"album_id": "al1"}))
+    assert "Album: 25" in text
+    assert "Popularity" not in text
+
+
+async def test_search_artists_does_not_show_follower_count() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/search"): {
+                "artists": {"total": 1, "items": [{"id": "a1", "name": "Radiohead"}]}
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("search", {"query": "x", "types": "artist"}))
+    assert "Radiohead (ID: a1)" in text
+    assert "followers" not in text
+
+
+async def test_get_episode_does_not_show_publisher_placeholder() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={("GET", "/episodes/e1"): {"name": "Ep", "show": {"name": "Pod"}}}
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_episode", {"episode_id": "e1"}))
+    assert "Show: Pod" in text
+    assert "Unknown" not in text
+
+
+async def test_get_audiobook_does_not_show_publisher() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(responses={("GET", "/audiobooks/b1"): {"name": "Book"}})
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_audiobook", {"audiobook_id": "b1"}))
+    assert "Publisher" not in text
+
+
+async def test_get_saved_shows_does_not_show_publisher_placeholder() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/shows"): {"total": 1, "items": [{"show": {"id": "s1", "name": "Pod"}}]}
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_saved_shows", {}))
+    assert "- Pod (ID: s1)" in text
+
+
+async def test_get_artist_does_not_show_genres() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={("GET", "/artists/a1"): {"name": "Radiohead", "genres": ["rock"]}}
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_artist", {"artist_id": "a1"}))
+    assert "Artist: Radiohead" in text
+    assert "rock" not in text
+
+
+async def test_get_followed_artists_does_not_show_genres() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/following"): {
+                "artists": {
+                    "items": [{"name": "Radiohead", "id": "a1", "genres": ["rock"]}],
+                    "total": 1,
+                }
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_followed_artists", {}))
+    assert "- Radiohead (ID: a1)" in text
+    assert "rock" not in text
+
+
+async def test_get_my_top_items_does_not_show_genres() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/top/artists"): {
+                "items": [{"name": "Radiohead", "id": "a1", "genres": ["rock"]}],
+                "total": 1,
+            }
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = _flatten(await mcp.call_tool("get_my_top_items", {"item_type": "artists"}))
+    assert "1. Radiohead (ID: a1)" in text
+    assert "rock" not in text
+
+
+async def test_top_artists_resource_does_not_show_genres() -> None:
+    from spotify_mcp import resources as resources_mod
+
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me/top/artists"): {"items": [{"name": "Radiohead", "genres": ["rock"]}]}
+        }
+    )
+    resources_mod.register(mcp, client)  # type: ignore[arg-type]
+    contents = await mcp.read_resource("spotify://me/top/artists")
+    text = "\n".join(getattr(c, "content", str(c)) for c in contents)
+    assert "1. Radiohead" in text
+    assert "rock" not in text
 
 
 # ---------------- resources / prompts registration ----------------

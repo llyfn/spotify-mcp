@@ -17,7 +17,6 @@ ALL_SCOPES = " ".join(
     [
         # User
         "user-read-private",
-        "user-read-email",
         # Playback
         "user-read-playback-state",
         "user-modify-playback-state",

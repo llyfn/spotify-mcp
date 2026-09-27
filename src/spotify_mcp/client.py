@@ -93,6 +93,15 @@ class SpotifyClient:
             # 429 Rate limited - exponential backoff
             if response.status_code == 429:
                 retry_after = int(response.headers.get("Retry-After", "1"))
+                error = self._error_object(response)
+                if isinstance(error, dict) and error.get("reason") == "QUOTA_EXCEEDED":
+                    # Shared account-wide quota won't recover within our retry window.
+                    raise SpotifyAPIError(
+                        429,
+                        "Quota exceeded. Development-mode quota is shared by every Client ID "
+                        f"on the developer account (retry after {retry_after}s)",
+                        retry_after=retry_after,
+                    )
                 wait_time = max(retry_after, 2**attempt)
                 if attempt < MAX_RETRIES:
                     print(
@@ -122,13 +131,18 @@ class SpotifyClient:
         await self._http.aclose()
 
     @staticmethod
-    def _extract_error_message(response: httpx.Response) -> str:
-        """Extract a human-readable error message from a Spotify API error response."""
+    def _error_object(response: httpx.Response) -> Any:
+        """Return the `error` value from a JSON error body, or None."""
         try:
             data = response.json()
         except ValueError:
-            return response.text or f"HTTP {response.status_code}"
-        error = data.get("error") if isinstance(data, dict) else None
+            return None
+        return data.get("error") if isinstance(data, dict) else None
+
+    @staticmethod
+    def _extract_error_message(response: httpx.Response) -> str:
+        """Extract a human-readable error message from a Spotify API error response."""
+        error = SpotifyClient._error_object(response)
         if isinstance(error, dict):
             return error.get("message", str(error))
         if error is not None:

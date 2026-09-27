@@ -7,6 +7,21 @@ from mcp.server.fastmcp import FastMCP
 
 from spotify_mcp.tools import register_all_tools
 
+REMOVED_TOOLS = {
+    "follow_artists_or_users",
+    "unfollow_artists_or_users",
+    "check_following",
+    "follow_playlist",
+    "unfollow_playlist",
+    "get_albums",
+    "get_artists",
+    "get_tracks",
+    "get_shows",
+    "get_episodes",
+    "get_audiobooks",
+    "get_chapters",
+}
+
 
 class StubClient:
     """Records calls instead of hitting the network."""
@@ -51,26 +66,18 @@ async def test_register_all_tools_registers_expected_tools(
     expected = {
         "search",
         "get_track",
-        "get_tracks",
         "get_album",
-        "get_albums",
         "get_artist",
-        "get_artists",
         "get_playlist",
         "get_my_profile",
         "get_playback_state",
         "get_show",
         "get_episode",
         "get_audiobook",
-        "get_chapters",
+        "get_chapter",
         "get_saved_tracks",
         "whoami",
-        "follow_artists_or_users",
-        "unfollow_artists_or_users",
-        "check_following",
         "get_followed_artists",
-        "follow_playlist",
-        "unfollow_playlist",
     }
     missing = expected - names
     assert not missing, f"missing tools: {missing}"
@@ -82,6 +89,14 @@ async def test_register_all_tools_makes_tools_unique(
     mcp, _ = mcp_with_tools
     names = [t.name for t in await mcp.list_tools()]
     assert len(names) == len(set(names))
+
+
+async def test_tools_backed_by_removed_endpoints_are_not_registered(
+    mcp_with_tools: tuple[FastMCP, StubClient],
+) -> None:
+    mcp, _ = mcp_with_tools
+    names = {t.name for t in await mcp.list_tools()}
+    assert not (REMOVED_TOOLS & names)
 
 
 async def test_search_tool_calls_correct_endpoint() -> None:
@@ -148,10 +163,10 @@ async def test_get_track_tool_formats_response() -> None:
                 "artists": [{"name": "Adele"}],
                 "album": {"name": "25"},
                 "duration_ms": 295000,  # 4:55
-                "popularity": 90,
                 "track_number": 1,
                 "explicit": False,
                 "external_urls": {"spotify": "https://open.spotify.com/track/abc"},
+                "popularity": 90,
             }
         }
     )
@@ -162,8 +177,8 @@ async def test_get_track_tool_formats_response() -> None:
     assert "Artist(s): Adele" in text
     assert "Album: 25" in text
     assert "Duration: 4:55" in text
-    assert "Popularity: 90" in text
     assert "https://open.spotify.com/track/abc" in text
+    assert "Popularity" not in text
 
 
 def _flatten(call_tool_result: Any) -> str:

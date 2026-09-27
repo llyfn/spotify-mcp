@@ -21,10 +21,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         return (
             f"User: {data.get('display_name', 'N/A')}\n"
             f"ID: {data.get('id')}\n"
-            f"Email: {data.get('email', 'N/A')}\n"
-            f"Country: {data.get('country', 'N/A')}\n"
-            f"Product: {data.get('product', 'N/A')}\n"
-            f"Followers: {data.get('followers', {}).get('total', 0):,}\n"
+            f"Account ID: {data.get('account_id', 'N/A')}\n"
             f"URL: {data.get('external_urls', {}).get('spotify', 'N/A')}"
         )
 
@@ -51,8 +48,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for i, item in enumerate(items, start=offset + 1):
             if item_type == "artists":
-                genres = ", ".join(item.get("genres", [])[:3])
-                lines.append(f"{i}. {item.get('name')} ({genres or 'N/A'}) (ID: {item.get('id')})")
+                lines.append(f"{i}. {item.get('name')} (ID: {item.get('id')})")
             else:
                 artists = ", ".join(a["name"] for a in item.get("artists", []))
                 lines.append(f"{i}. {item.get('name')} - {artists} (ID: {item.get('id')})")
@@ -83,8 +79,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
 
         if profile and "_error" not in profile:
             lines.append(f"Authenticated as: {profile.get('display_name')} ({profile.get('id')})")
-            lines.append(f"Country: {profile.get('country', 'N/A')}")
-            lines.append(f"Plan: {profile.get('product', 'N/A')}")
+            lines.append(f"Account ID: {profile.get('account_id', 'N/A')}")
         else:
             err = (profile or {}).get("_error", "unknown")
             lines.append(f"Profile fetch failed: {err}")

@@ -141,8 +141,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
 
     @mcp.tool()
     async def check_saved_in_library(uris: list[str]) -> str:
-        """Check whether items are saved in the user's library, or artists/users/playlists
-        are followed.
+        """Check whether items are saved or artists/users/playlists are followed.
 
         Auto-chunks at 40 URIs per request.
 

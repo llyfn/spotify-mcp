@@ -118,11 +118,11 @@ Development-mode Spotify apps have these restrictions (see the
 - API quota is shared by all Client IDs on the developer account. When it runs out, tools report `Quota exceeded`.
 - Search returns at most 10 results per type.
 - Full playlist contents are only returned for playlists you own or collaborate on.
-- Following artists via `save_to_library`/`remove_from_library` relies on live API behaviour (verified 2026-09-26); the OpenAPI spec documents artist URIs only for the check endpoint.
+- Following artists via `save_to_library`/`remove_from_library` relies on live API behaviour; the OpenAPI spec documents artist URIs only for the check endpoint.
 
 ## Upgrading from 0.2.x
 
-Spotify removed several endpoints and fields in the 2026 Web API changes. If you're
+Spotify removed several endpoints and fields from its Web API. If you're
 upgrading from an older version of this server, note the following:
 
 - `follow_artists_or_users` / `unfollow_artists_or_users` / `check_following` /

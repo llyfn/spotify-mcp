@@ -138,6 +138,28 @@ async def test_429_exhausts_retries(client: SpotifyClient, monkeypatch: pytest.M
 
 
 @respx.mock
+async def test_429_with_long_retry_after_fails_without_sleeping(
+    client: SpotifyClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sleeps: list[float] = []
+
+    async def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    monkeypatch.setattr("spotify_mcp.client.asyncio.sleep", fake_sleep)
+
+    route = respx.get(f"{SPOTIFY_API_BASE}/tracks/x").mock(
+        return_value=httpx.Response(429, headers={"Retry-After": "3600"})
+    )
+    with pytest.raises(SpotifyAPIError) as exc_info:
+        await client.get("/tracks/x")
+    assert exc_info.value.status_code == 429
+    assert exc_info.value.retry_after == 3600
+    assert route.call_count == 1
+    assert sleeps == []
+
+
+@respx.mock
 async def test_429_quota_exceeded_explains_shared_quota(
     client: SpotifyClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -11,6 +11,7 @@ from spotify_mcp.config import SPOTIFY_API_BASE
 from spotify_mcp.exceptions import SpotifyAPIError
 
 MAX_RETRIES = 3
+MAX_RETRY_WAIT_SECONDS = 30
 
 
 class SpotifyClient:
@@ -103,7 +104,7 @@ class SpotifyClient:
                         retry_after=retry_after,
                     )
                 wait_time = max(retry_after, 2**attempt)
-                if attempt < MAX_RETRIES:
+                if attempt < MAX_RETRIES and wait_time <= MAX_RETRY_WAIT_SECONDS:
                     print(
                         f"Rate limited. Retrying in {wait_time}s...",
                         file=sys.stderr,

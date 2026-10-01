@@ -28,6 +28,8 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         total = artists_page.get("total")
         lines = []
         for a in items:
+            if not a:
+                continue
             lines.append(f"- {a.get('name')} (ID: {a.get('id')})")
         cursors = artists_page.get("cursors") or {}
         header = f"Followed artists ({len(items)}"

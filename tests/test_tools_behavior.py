@@ -589,16 +589,40 @@ _NULL_CASES: list[tuple[str, dict, str, dict, list[str]]] = [
         {
             "name": "P",
             "owner": {"display_name": "X"},
-            "items": {"total": 2, "items": [None, {"item": _TRACK}]},
+            "items": {"total": 3, "items": [None, {"item": None}, {"item": _TRACK}]},
         },
-        ["2. T2 - X"],
+        ["1. (unavailable)", "2. (unavailable)", "3. T2 - X"],
     ),
     (
         "get_playlist_items",
         {"playlist_id": "pl"},
         "/playlists/pl/items",
-        {"total": 2, "items": [None, {"item": _TRACK, "added_by": None}]},
-        ["2. T2 - X (added by: unknown)"],
+        {"total": 3, "items": [None, {"item": None}, {"item": _TRACK, "added_by": None}]},
+        [
+            "showing 1-3 of 3",
+            "1. (unavailable)",
+            "2. (unavailable)",
+            "3. T2 - X (added by: unknown)",
+        ],
+    ),
+    (
+        "get_followed_artists",
+        {},
+        "/me/following",
+        {"artists": {"total": 2, "items": [None, {"id": "a2", "name": "A2"}]}},
+        ["- A2 (ID: a2)"],
+    ),
+    (
+        "get_devices",
+        {},
+        "/me/player/devices",
+        {
+            "devices": [
+                None,
+                {"id": "d2", "name": "Phone", "type": "Smartphone", "volume_percent": 50},
+            ]
+        },
+        ["- Phone (Smartphone) - Volume: 50% (ID: d2)"],
     ),
     (
         "get_my_top_items",

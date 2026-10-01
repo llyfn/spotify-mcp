@@ -205,6 +205,8 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             return "No active devices found."
         lines = []
         for d in devices:
+            if not d:
+                continue
             active = " (ACTIVE)" if d.get("is_active") else ""
             lines.append(
                 f"- {d.get('name')} ({d.get('type', 'Unknown')}) - "

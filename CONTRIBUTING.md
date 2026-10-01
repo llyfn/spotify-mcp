@@ -135,7 +135,7 @@ _MODULES = [
 - **Return human-readable strings**, not raw JSON. The LLM needs clean, formatted text.
 - **Include Spotify IDs** in output so the LLM can chain tool calls (e.g., search -> get details).
 - **Write clear docstrings.** The docstring becomes the tool description that the LLM sees. Keep it concise (1-2 sentences) and include `Args:` with parameter descriptions.
-- **Expect `null` list entries.** Spotify can return `null` inside list responses. Numbered lists print `N. (unavailable)`; bulleted lists skip the entry.
+- **Expect `null` list entries.** Spotify can return `null` inside list responses. Lists with a count or range header print `UNAVAILABLE` (from `tools/_utils.py`) in place of the entry, so the header matches the lines; search results and devices skip it.
 - **Request minimum scopes.** Don't add scopes to `config.py` unless your endpoint actually requires them.
 - **Use the `client` methods** (`client.get()`, `client.post()`, etc.) — never use `httpx` directly.
 - **Handle pagination** with `limit` and `offset` parameters where applicable.

@@ -121,25 +121,6 @@ Development-mode Spotify apps have these restrictions (see the
 - Following artists via `save_to_library`/`remove_from_library` relies on live API behaviour; the OpenAPI spec documents artist URIs only for the check endpoint.
 - Audiobook tools only return results in markets where Spotify offers audiobooks.
 
-## Upgrading from 0.2.x
-
-Spotify removed several endpoints and fields from its Web API. If you're
-upgrading from an older version of this server, note the following:
-
-- `follow_artists_or_users` / `unfollow_artists_or_users` / `check_following` /
-  `follow_playlist` / `unfollow_playlist` are gone. Use `save_to_library` /
-  `remove_from_library` / `check_saved_in_library` instead, passing
-  `spotify:artist:...`, `spotify:user:...`, or `spotify:playlist:...` URIs.
-- `get_albums` / `get_artists` / `get_tracks` / `get_shows` / `get_episodes` /
-  `get_audiobooks` / `get_chapters` (the batch lookup tools) are gone — Spotify
-  removed the batch endpoints, which now return 403 for development-mode apps.
-  Call the single-item tools (`get_album`, `get_artist`, `get_track`, `get_show`,
-  `get_episode`, `get_audiobook`, `get_chapter`) once per ID instead.
-- `follow_playlist`'s public/private flag has no equivalent in `/me/library` —
-  playlists followed via `save_to_library` can't be marked public or private.
-- Profile output (`get_my_profile`) no longer includes email, country, plan, or
-  follower count; the `user-read-email` scope is no longer requested.
-
 ## Authentication
 
 The server uses Spotify's **Authorization Code** flow:

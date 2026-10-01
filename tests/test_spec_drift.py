@@ -21,6 +21,7 @@ SPEC = {
         "/me/tracks": {"get": {"parameters": [{"$ref": "#/components/parameters/QueryLimit"}]}},
         "/tracks": {"get": {"deprecated": True}},
         "/me/library": {"put": {}},
+        "/me/player/devices": {"get": {}},
     },
     "components": {
         "parameters": {"QueryLimit": {"name": "limit", "in": "query", "schema": {"maximum": 50}}}
@@ -83,6 +84,41 @@ def test_reports_a_literal_limit_resolved_through_a_ref(drift: ModuleType, tmp_p
     ]
 
 
-def test_ignores_calls_with_non_literal_paths(drift: ModuleType, tmp_path: Path) -> None:
+def test_non_literal_paths_are_collected_but_not_checked(drift: ModuleType, tmp_path: Path) -> None:
     source = "async def passthrough(client, path):\n    await client.get(path)\n"
     assert _problems(drift, tmp_path, source) == []
+    assert [call.path for call in drift.collect_calls(tmp_path)] == [None]
+
+
+def test_checks_a_dict_literal_limit_larger_than_the_parameter_default(
+    drift: ModuleType, tmp_path: Path
+) -> None:
+    source = (
+        "async def saved(client, limit: int = 10):\n"
+        '    await client.get("/me/tracks", params={"limit": 60})\n'
+    )
+    assert _problems(drift, tmp_path, source) == [
+        "tool.py:2 GET /me/tracks: limit 60 exceeds the spec maximum of 50"
+    ]
+
+
+def test_checks_a_keyword_only_limit_default(drift: ModuleType, tmp_path: Path) -> None:
+    source = (
+        "async def albums(client, artist_id, *, limit: int = 20):\n"
+        '    await client.get(f"/artists/{artist_id}/albums", params={"limit": limit})\n'
+    )
+    assert _problems(drift, tmp_path, source) == [
+        "tool.py:2 GET /artists/{}/albums: limit 20 exceeds the spec maximum of 10"
+    ]
+
+
+def test_reports_a_limit_sent_where_the_spec_defines_no_maximum(
+    drift: ModuleType, tmp_path: Path
+) -> None:
+    source = (
+        "async def devices(client, limit: int = 5):\n"
+        '    await client.get("/me/player/devices", params={"limit": limit})\n'
+    )
+    assert _problems(drift, tmp_path, source) == [
+        "tool.py:2 GET /me/player/devices: sends a limit but the spec defines no maximum for it"
+    ]

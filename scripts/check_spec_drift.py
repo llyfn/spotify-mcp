@@ -3,7 +3,7 @@
 Usage: python scripts/check_spec_drift.py [SPEC_PATH_OR_URL]
 
 Exits 1 if the code calls an endpoint the spec deprecates or does not define,
-or sends a `limit` above the spec maximum.
+or has a default `limit` above the spec maximum.
 """
 
 from __future__ import annotations
@@ -49,26 +49,45 @@ def _path_template(node: ast.expr) -> str | None:
     return None
 
 
-def _function_limit(func: ast.AsyncFunctionDef) -> int | None:
-    """The largest `limit` a tool can send: its parameter default and any dict literals."""
+def _parameter_defaults(func: ast.AsyncFunctionDef) -> dict[str, ast.expr]:
     args = func.args
     names = [a.arg for a in args.posonlyargs + args.args]
     defaults = dict(zip(reversed(names), reversed(args.defaults), strict=False))
     defaults.update(
         {a.arg: d for a, d in zip(args.kwonlyargs, args.kw_defaults, strict=True) if d is not None}
     )
-    candidates = [defaults.get("limit")]
+    return defaults
+
+
+def _dict_assigned_to(func: ast.AsyncFunctionDef, name: str) -> ast.Dict | None:
     for node in ast.walk(func):
-        if isinstance(node, ast.Dict):
-            candidates += [
-                value
-                for key, value in zip(node.keys, node.values, strict=True)
-                if isinstance(key, ast.Constant) and key.value == "limit"
-            ]
-    limits = [
-        c.value for c in candidates if isinstance(c, ast.Constant) and isinstance(c.value, int)
-    ]
-    return max(limits, default=None)
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        else:
+            continue
+        if isinstance(node.value, ast.Dict) and any(
+            isinstance(target, ast.Name) and target.id == name for target in targets
+        ):
+            return node.value
+    return None
+
+
+def _call_limit(func: ast.AsyncFunctionDef, call: ast.Call) -> int | None:
+    """The `limit` this call sends by default, read from its `params` argument."""
+    params = next((k.value for k in call.keywords if k.arg == "params"), None)
+    if isinstance(params, ast.Name):
+        params = _dict_assigned_to(func, params.id)
+    if not isinstance(params, ast.Dict):
+        return None
+    for key, value in zip(params.keys, params.values, strict=True):
+        if isinstance(key, ast.Constant) and key.value == "limit":
+            if isinstance(value, ast.Name):
+                value = _parameter_defaults(func).get(value.id)
+            if isinstance(value, ast.Constant) and isinstance(value.value, int):
+                return value.value
+    return None
 
 
 def collect_calls(src_dir: Path) -> list[Call]:
@@ -77,7 +96,6 @@ def collect_calls(src_dir: Path) -> list[Call]:
         for func in ast.walk(ast.parse(file.read_text())):
             if not isinstance(func, ast.AsyncFunctionDef):
                 continue
-            limit = _function_limit(func)
             for node in ast.walk(func):
                 if (
                     isinstance(node, ast.Call)
@@ -90,6 +108,7 @@ def collect_calls(src_dir: Path) -> list[Call]:
                     path = _path_template(node.args[0])
                     if path is None or path.startswith("/"):
                         name = str(file.relative_to(src_dir))
+                        limit = _call_limit(func, node)
                         calls.add(Call(name, node.lineno, node.func.attr, path, limit))
     return sorted(calls, key=lambda c: (c.file, c.line))
 
@@ -145,18 +164,18 @@ def main(argv: list[str]) -> int:
     spec = load_spec(argv[1] if len(argv) > 1 else SPEC_URL)
     calls = collect_calls(SRC_DIR)
     problems = check(spec, calls)
+    skipped = [f"{call.file}:{call.line}" for call in calls if call.path is None]
+    checked = len(calls) - len(skipped)
+    ok = not problems and checked > 0
     for problem in problems:
         print(problem)
-    if problems:
-        return 1
-    skipped = [f"{call.file}:{call.line}" for call in calls if call.path is None]
-    if len(calls) == len(skipped):
+    if ok:
+        print(f"OK: {checked} API calls checked against the spec")
+    elif not problems:
         print("No API calls found to check")
-        return 1
-    print(f"OK: {len(calls) - len(skipped)} API calls checked against the spec")
     if skipped:
         print(f"Not checked, path is not a string literal: {', '.join(skipped)}")
-    return 0
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

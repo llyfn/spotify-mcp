@@ -148,3 +148,47 @@ def test_main_passes_on_a_clean_source_tree(
     )
     monkeypatch.setattr(drift, "SRC_DIR", src)
     assert drift.main(["check_spec_drift.py", str(spec_file)]) == 0
+
+
+def test_a_limit_is_attributed_only_to_the_call_that_sends_it(
+    drift: ModuleType, tmp_path: Path
+) -> None:
+    source = (
+        "async def both(client, limit: int = 5):\n"
+        '    await client.get("/me/player/devices")\n'
+        '    await client.get("/me/tracks", params={"limit": limit})\n'
+    )
+    assert _problems(drift, tmp_path, source) == []
+
+
+def test_checks_a_limit_in_a_params_dict_passed_by_name(drift: ModuleType, tmp_path: Path) -> None:
+    source = (
+        "async def saved(client, limit: int = 60):\n"
+        '    params: dict = {"limit": limit, "offset": 0}\n'
+        '    await client.get("/me/tracks", params=params)\n'
+    )
+    assert _problems(drift, tmp_path, source) == [
+        "tool.py:3 GET /me/tracks: limit 60 exceeds the spec maximum of 50"
+    ]
+
+
+def test_main_lists_unchecked_calls_even_when_it_finds_problems(
+    drift: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text(yaml.safe_dump(SPEC))
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "tool.py").write_text(
+        "async def tracks(client, ids, path):\n"
+        '    await client.get("/tracks", params={"ids": ids})\n'
+        "    await client.get(path)\n"
+    )
+    monkeypatch.setattr(drift, "SRC_DIR", src)
+    assert drift.main(["check_spec_drift.py", str(spec_file)]) == 1
+    output = capsys.readouterr().out
+    assert "/tracks is deprecated" in output
+    assert "Not checked, path is not a string literal: tool.py:3" in output

@@ -90,7 +90,7 @@ _NULL_CASES: list[tuple[str, dict, str, dict, list[str]]] = [
                 },
             ],
         },
-        ["- Alb (2020) [album] - X"],
+        ["showing 1-2 of 2", "- (unavailable)", "- Alb (2020) [album] - X"],
     ),
     (
         "get_audiobook_chapters",
@@ -124,14 +124,14 @@ _NULL_CASES: list[tuple[str, dict, str, dict, list[str]]] = [
                 },
             ],
         },
-        ["- A2 by X (2020) (ID: a2)"],
+        ["showing 1-2 of 2", "- (unavailable)", "- A2 by X (2020) (ID: a2)"],
     ),
     (
         "get_saved_shows",
         {},
         "/me/shows",
         {"total": 2, "items": [{"show": None}, {"show": {"id": "s2", "name": "S2"}}]},
-        ["- S2 (ID: s2)"],
+        ["showing 1-2 of 2", "- (unavailable)", "- S2 (ID: s2)"],
     ),
     (
         "get_saved_episodes",
@@ -144,14 +144,14 @@ _NULL_CASES: list[tuple[str, dict, str, dict, list[str]]] = [
                 {"episode": {"id": "e2", "name": "E2", "release_date": "2020"}},
             ],
         },
-        ["- E2 (2020) (ID: e2)"],
+        ["showing 1-2 of 2", "- (unavailable)", "- E2 (2020) (ID: e2)"],
     ),
     (
         "get_saved_audiobooks",
         {},
         "/me/audiobooks",
         {"total": 2, "items": [None, {"id": "b2", "name": "B2", "authors": [{"name": "X"}]}]},
-        ["- B2 by X (ID: b2)"],
+        ["showing 1-2 of 2", "- (unavailable)", "- B2 by X (ID: b2)"],
     ),
     (
         "get_my_playlists",
@@ -169,7 +169,7 @@ _NULL_CASES: list[tuple[str, dict, str, dict, list[str]]] = [
                 },
             ],
         },
-        ["- P2 (3 tracks, by X) (ID: p2)"],
+        ["showing 1-2 of 2", "- (unavailable)", "- P2 (3 tracks, by X) (ID: p2)"],
     ),
     (
         "get_playlist",
@@ -199,7 +199,7 @@ _NULL_CASES: list[tuple[str, dict, str, dict, list[str]]] = [
         {},
         "/me/following",
         {"artists": {"total": 2, "items": [None, {"id": "a2", "name": "A2"}]}},
-        ["- A2 (ID: a2)"],
+        ["Followed artists (2 of 2):", "- (unavailable)", "- A2 (ID: a2)"],
     ),
     (
         "get_devices",
@@ -275,3 +275,26 @@ async def test_resources_tolerate_null_entries() -> None:
         text = "\n".join(getattr(c, "content", str(c)) for c in contents)
         for line in expected:
             assert line in text
+
+
+async def test_get_devices_reports_none_when_every_entry_is_null() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(responses={("GET", "/me/player/devices"): {"devices": [None]}})
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = flatten(await mcp.call_tool("get_devices", {}))
+    assert text == "No active devices found."
+
+
+async def test_whoami_tolerates_a_null_device() -> None:
+    mcp = FastMCP("test")
+    client = StubClient(
+        responses={
+            ("GET", "/me"): {"display_name": "Alice", "id": "alice"},
+            ("GET", "/me/player/devices"): {
+                "devices": [None, {"name": "Laptop", "type": "Computer", "is_active": True}]
+            },
+        }
+    )
+    register_all_tools(mcp, client)  # type: ignore[arg-type]
+    text = flatten(await mcp.call_tool("whoami", {}))
+    assert "Active device: Laptop" in text

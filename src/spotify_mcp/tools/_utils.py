@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+UNAVAILABLE = "(unavailable)"
+
 
 def paged_list(label: str, lines: list[str], total: int, offset: int) -> str:
     """Format a paginated list for tool output."""

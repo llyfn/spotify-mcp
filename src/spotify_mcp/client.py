@@ -11,6 +11,7 @@ from spotify_mcp.config import SPOTIFY_API_BASE
 from spotify_mcp.exceptions import SpotifyAPIError
 
 MAX_RETRIES = 3
+# Spotify can send a Retry-After of hours; a wait longer than this fails the call instead.
 MAX_RETRY_WAIT_SECONDS = 30
 
 

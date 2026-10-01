@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from spotify_mcp.config import ALL_SCOPES
 from spotify_mcp.exceptions import SpotifyAPIError
-from spotify_mcp.tools._utils import paged_list
+from spotify_mcp.tools._utils import UNAVAILABLE, paged_list
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -48,7 +48,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for i, item in enumerate(items, start=offset + 1):
             if not item:
-                lines.append(f"{i}. (unavailable)")
+                lines.append(f"{i}. {UNAVAILABLE}")
                 continue
             if item_type == "artists":
                 lines.append(f"{i}. {item.get('name')} (ID: {item.get('id')})")
@@ -90,7 +90,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         active = None
         if devices and "_error" not in devices:
             for d in devices.get("devices", []) or []:
-                if d.get("is_active"):
+                if d and d.get("is_active"):
                     active = d
                     break
             if active:

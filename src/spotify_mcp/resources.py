@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from spotify_mcp.exceptions import SpotifyAPIError
-from spotify_mcp.tools._utils import format_progress, format_track
+from spotify_mcp.tools._utils import UNAVAILABLE, format_progress, format_track
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -55,7 +55,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         result = f"Currently playing: {format_track(currently)}\n"
         if queue:
             lines = [
-                f"  {i}. {format_track(t) if t else '(unavailable)'}"
+                f"  {i}. {format_track(t) if t else UNAVAILABLE}"
                 for i, t in enumerate(queue[:20], start=1)
             ]
             result += f"\nUp next ({len(queue)}):\n" + "\n".join(lines)
@@ -75,7 +75,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for i, t in enumerate(items, start=1):
             if not t:
-                lines.append(f"{i}. (unavailable)")
+                lines.append(f"{i}. {UNAVAILABLE}")
                 continue
             artists = ", ".join(a["name"] for a in t.get("artists", []))
             lines.append(f"{i}. {t.get('name')} - {artists}")
@@ -93,7 +93,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for i, a in enumerate(items, start=1):
             if not a:
-                lines.append(f"{i}. (unavailable)")
+                lines.append(f"{i}. {UNAVAILABLE}")
                 continue
             lines.append(f"{i}. {a.get('name')}")
         return "Top artists (last ~6 months):\n" + "\n".join(lines)

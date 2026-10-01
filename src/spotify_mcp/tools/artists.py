@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from spotify_mcp.tools._utils import paged_list
+from spotify_mcp.tools._utils import UNAVAILABLE, paged_list
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -50,6 +50,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for a in items:
             if not a:
+                lines.append(f"- {UNAVAILABLE}")
                 continue
             artists = ", ".join(ar["name"] for ar in a.get("artists", []))
             album_type = a.get("album_type", "")

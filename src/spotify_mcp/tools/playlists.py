@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from spotify_mcp.tools._utils import chunked, paged_list
+from spotify_mcp.tools._utils import UNAVAILABLE, chunked, paged_list
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -35,7 +35,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         for i, entry in enumerate(items[:20], start=1):
             item = (entry or {}).get("item")
             if not item:
-                track_lines.append(f"  {i}. (unavailable)")
+                track_lines.append(f"  {i}. {UNAVAILABLE}")
                 continue
             artists = ", ".join(a["name"] for a in item.get("artists", []))
             track_lines.append(f"  {i}. {item['name']} - {artists}")
@@ -108,7 +108,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         for i, entry in enumerate(items, start=offset + 1):
             item = (entry or {}).get("item")
             if not item:
-                lines.append(f"{i}. (unavailable)")
+                lines.append(f"{i}. {UNAVAILABLE}")
                 continue
             artists = ", ".join(a["name"] for a in item.get("artists", []))
             added_by = (entry.get("added_by") or {}).get("id", "unknown")
@@ -194,6 +194,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for p in items:
             if not p:
+                lines.append(f"- {UNAVAILABLE}")
                 continue
             owner = p.get("owner", {}).get("display_name", "Unknown")
             items_ref = p.get("items")

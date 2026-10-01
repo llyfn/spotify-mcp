@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from spotify_mcp.tools._utils import format_duration_min, paged_list
+from spotify_mcp.tools._utils import UNAVAILABLE, format_duration_min, paged_list
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -25,7 +25,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         episode_lines = []
         for i, ep in enumerate(episodes[:10], start=1):
             if not ep:
-                episode_lines.append(f"  {i}. (unavailable)")
+                episode_lines.append(f"  {i}. {UNAVAILABLE}")
                 continue
             episode_lines.append(f"  {i}. {ep.get('name')} ({ep.get('release_date', 'N/A')})")
         lines = [f"Show: {data.get('name')}"]
@@ -63,7 +63,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         lines = []
         for i, ep in enumerate(items, start=offset + 1):
             if not ep:
-                lines.append(f"{i}. (unavailable)")
+                lines.append(f"{i}. {UNAVAILABLE}")
                 continue
             duration = format_duration_min(ep.get("duration_ms", 0))
             release = ep.get("release_date", "N/A")

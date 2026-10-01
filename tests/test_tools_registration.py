@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 from mcp.server.fastmcp import FastMCP
 
 from spotify_mcp.tools import register_all_tools
+from tests._stubs import StubClient, flatten
 
 REMOVED_TOOLS = {
     "follow_artists_or_users",
@@ -21,32 +20,6 @@ REMOVED_TOOLS = {
     "get_audiobooks",
     "get_chapters",
 }
-
-
-class StubClient:
-    """Records calls instead of hitting the network."""
-
-    def __init__(self, responses: dict[tuple[str, str], Any] | None = None) -> None:
-        self._responses = responses or {}
-        self.calls: list[tuple[str, str, dict | None, Any]] = []
-
-    async def _do(self, method: str, path: str, **kwargs: Any) -> Any:
-        params = kwargs.get("params")
-        json_body = kwargs.get("json")
-        self.calls.append((method, path, params, json_body))
-        return self._responses.get((method, path), {})
-
-    async def get(self, path: str, params: dict | None = None) -> Any:
-        return await self._do("GET", path, params=params)
-
-    async def post(self, path: str, params: dict | None = None, json: Any = None) -> Any:
-        return await self._do("POST", path, params=params, json=json)
-
-    async def put(self, path: str, params: dict | None = None, json: Any = None) -> Any:
-        return await self._do("PUT", path, params=params, json=json)
-
-    async def delete(self, path: str, params: dict | None = None, json: Any = None) -> Any:
-        return await self._do("DELETE", path, params=params, json=json)
 
 
 @pytest.fixture
@@ -128,7 +101,7 @@ async def test_search_tool_calls_correct_endpoint() -> None:
     assert path == "/search"
     assert params == {"q": "love", "type": "track", "limit": 5, "offset": 0}
 
-    text = _flatten(result)
+    text = flatten(result)
     assert "Song" in text
     assert "Artist" in text
     assert "t1" in text
@@ -151,7 +124,7 @@ async def test_search_tool_no_results() -> None:
     client = StubClient(responses={("GET", "/search"): {"tracks": {"total": 0, "items": []}}})
     register_all_tools(mcp, client)  # type: ignore[arg-type]
     result = await mcp.call_tool("search", {"query": "zzz"})
-    assert "No results found." in _flatten(result)
+    assert "No results found." in flatten(result)
 
 
 async def test_get_track_tool_formats_response() -> None:
@@ -172,25 +145,10 @@ async def test_get_track_tool_formats_response() -> None:
     )
     register_all_tools(mcp, client)  # type: ignore[arg-type]
     result = await mcp.call_tool("get_track", {"track_id": "abc"})
-    text = _flatten(result)
+    text = flatten(result)
     assert "Track: Hello" in text
     assert "Artist(s): Adele" in text
     assert "Album: 25" in text
     assert "Duration: 4:55" in text
     assert "https://open.spotify.com/track/abc" in text
     assert "Popularity" not in text
-
-
-def _flatten(call_tool_result: Any) -> str:
-    """call_tool returns a list[ContentBlock] or (list, dict) tuple depending on version.
-
-    We only need a string for substring assertions, so coerce defensively.
-    """
-    if isinstance(call_tool_result, tuple):
-        call_tool_result = call_tool_result[0]
-    parts: list[str] = []
-    for item in call_tool_result:
-        text = getattr(item, "text", None)
-        if text is not None:
-            parts.append(text)
-    return "\n".join(parts) if parts else str(call_tool_result)

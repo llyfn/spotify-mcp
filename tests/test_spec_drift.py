@@ -6,6 +6,7 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+import yaml
 
 SCRIPT = Path(__file__).parent.parent / "scripts" / "check_spec_drift.py"
 
@@ -122,3 +123,28 @@ def test_reports_a_limit_sent_where_the_spec_defines_no_maximum(
     assert _problems(drift, tmp_path, source) == [
         "tool.py:2 GET /me/player/devices: sends a limit but the spec defines no maximum for it"
     ]
+
+
+def test_main_fails_when_it_checks_no_calls(
+    drift: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text(yaml.safe_dump(SPEC))
+    src = tmp_path / "src"
+    src.mkdir()
+    monkeypatch.setattr(drift, "SRC_DIR", src)
+    assert drift.main(["check_spec_drift.py", str(spec_file)]) == 1
+
+
+def test_main_passes_on_a_clean_source_tree(
+    drift: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    spec_file = tmp_path / "spec.yaml"
+    spec_file.write_text(yaml.safe_dump(SPEC))
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "tool.py").write_text(
+        'async def devices(client):\n    await client.get("/me/player/devices")\n'
+    )
+    monkeypatch.setattr(drift, "SRC_DIR", src)
+    assert drift.main(["check_spec_drift.py", str(spec_file)]) == 0

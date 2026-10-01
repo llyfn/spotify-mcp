@@ -33,7 +33,7 @@ class Call:
 
 def load_spec(source: str) -> dict:
     if source.startswith("http"):
-        with urllib.request.urlopen(source) as response:
+        with urllib.request.urlopen(source, timeout=30) as response:
             return yaml.safe_load(response.read())
     return yaml.safe_load(Path(source).read_text())
 
@@ -150,6 +150,9 @@ def main(argv: list[str]) -> int:
     if problems:
         return 1
     skipped = [f"{call.file}:{call.line}" for call in calls if call.path is None]
+    if len(calls) == len(skipped):
+        print("No API calls found to check")
+        return 1
     print(f"OK: {len(calls) - len(skipped)} API calls checked against the spec")
     if skipped:
         print(f"Not checked, path is not a string literal: {', '.join(skipped)}")

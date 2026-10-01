@@ -1,6 +1,6 @@
 [project]
 name = "mcp-server-spotify"
-version = "0.3.0"
+version = "0.3.1"
 description = "Spotify MCP Server for Claude and other AI assistants"
 readme = "README.md"
 license = { text = "MIT" }
@@ -43,6 +43,7 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
     "respx>=0.21",
+    "pyyaml>=6.0",
 ]
 
 [tool.pytest.ini_options]

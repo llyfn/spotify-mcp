@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from spotify_mcp.tools._utils import chunked, paged_list
+from spotify_mcp.tools._utils import UNAVAILABLE, chunked, paged_list
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
 
 _LIBRARY_MAX_PER_REQUEST = 40
+# PUT and DELETE /me/library accept artist URIs, although the OpenAPI spec lists them only
+# for /me/library/contains.
 
 
 def register(mcp: FastMCP, client: SpotifyClient) -> None:
@@ -26,7 +28,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, item in enumerate(items, start=offset + 1):
-            track = item.get("track", {})
+            track = (item or {}).get("track")
+            if not track:
+                lines.append(f"{i}. {UNAVAILABLE}")
+                continue
             artists = ", ".join(a["name"] for a in track.get("artists", []))
             lines.append(f"{i}. {track.get('name')} - {artists} (ID: {track.get('id')})")
         total = data.get("total", len(items))
@@ -44,7 +49,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for item in items:
-            album = item.get("album", {})
+            album = (item or {}).get("album")
+            if not album:
+                lines.append(f"- {UNAVAILABLE}")
+                continue
             artists = ", ".join(a["name"] for a in album.get("artists", []))
             release = album.get("release_date", "N/A")
             lines.append(f"- {album.get('name')} by {artists} ({release}) (ID: {album.get('id')})")
@@ -63,7 +71,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for item in items:
-            show = item.get("show", {})
+            show = (item or {}).get("show")
+            if not show:
+                lines.append(f"- {UNAVAILABLE}")
+                continue
             lines.append(f"- {show.get('name')} (ID: {show.get('id')})")
         total = data.get("total", len(items))
         return paged_list("Saved shows", lines, total, offset)
@@ -80,7 +91,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for item in items:
-            episode = item.get("episode", {})
+            episode = (item or {}).get("episode")
+            if not episode:
+                lines.append(f"- {UNAVAILABLE}")
+                continue
             release = episode.get("release_date", "N/A")
             lines.append(f"- {episode.get('name')} ({release}) (ID: {episode.get('id')})")
         total = data.get("total", len(items))
@@ -98,6 +112,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for item in items:
+            if not item:
+                lines.append(f"- {UNAVAILABLE}")
+                continue
             authors = ", ".join(a["name"] for a in item.get("authors", []))
             lines.append(f"- {item.get('name')} by {authors} (ID: {item.get('id')})")
         total = data.get("total", len(items))

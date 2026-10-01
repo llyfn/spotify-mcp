@@ -50,7 +50,7 @@ SPOTIFY_LIVE_TESTS=1 SPOTIFY_LIVE_WRITE=1 uv run pytest tests/live -v
 SPOTIFY_LIVE_TESTS=1 SPOTIFY_LIVE_PLAYBACK=1 uv run pytest tests/live -v
 ```
 
-Write tests restore the library and delete the playlist they create. The playback test restores shuffle, repeat, volume, play/pause, and the position when the same item is still playing; it cannot restore the queue, so one extra track stays queued and a manually queued next item is consumed. Audiobook tests search the market in `SPOTIFY_LIVE_MARKET` (default `US`) and are skipped when it returns no audiobooks. Every tool must be called by a live test; `tests/test_live_coverage.py` fails otherwise. Run all three tiers before a release.
+Write tests restore the library and delete the playlist they create. The playback test restores shuffle, repeat, volume, play/pause, and the position when the same item is still playing; it cannot restore the queue. It queues one track and skips to it, so with an empty queue nothing is left behind; if you had queued items yourself, your next item is played instead and the test track stays queued. Audiobook tests search the market in `SPOTIFY_LIVE_MARKET` (default `US`) and are skipped when it returns no audiobooks. Every tool must be called by a live test; `tests/test_live_coverage.py` fails otherwise. Run all three tiers before a release.
 
 ### Spec Drift Check
 

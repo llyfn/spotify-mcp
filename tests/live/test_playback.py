@@ -16,7 +16,9 @@ async def test_playback_controls(live: Live) -> None:
     volume = device.get("volume_percent")
     can_set_volume = volume is not None and device.get("supports_volume", True)
     found = await live.call("search", query="Nils Frahm", types="track", limit=1)
-    track_uri = f"spotify:track:{first_id(found)}"
+    track_id = first_id(found)
+    assert track_id
+    track_uri = f"spotify:track:{track_id}"
 
     async def step(tool: str, **args: object) -> None:
         await live.call(tool, **args)
@@ -40,9 +42,22 @@ async def test_playback_controls(live: Live) -> None:
             await step("set_volume", volume_percent=max(volume - 5, 0))
         await step("transfer_playback", device_id=device["id"], play=True)
     finally:
-        await step("toggle_shuffle", state=state["shuffle_state"])
-        await step("set_repeat", state=state["repeat_state"])
+        restores: list[tuple[str, dict[str, object]]] = [
+            ("toggle_shuffle", {"state": state["shuffle_state"]}),
+            ("set_repeat", {"state": state["repeat_state"]}),
+        ]
         if can_set_volume:
-            await step("set_volume", volume_percent=volume)
-        if not state["is_playing"]:
-            await step("pause")
+            restores.append(("set_volume", {"volume_percent": volume}))
+        errors = []
+        for tool, args in restores:
+            try:
+                await step(tool, **args)
+            except Exception as error:
+                errors.append(f"{tool}: {error}")
+        try:
+            current = await live.client.get("/me/player")
+            if current and current.get("is_playing") != state["is_playing"]:
+                await step("play" if state["is_playing"] else "pause")
+        except Exception as error:
+            errors.append(f"play/pause: {error}")
+        assert not errors, f"could not restore playback state: {errors}"

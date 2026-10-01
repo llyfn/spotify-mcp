@@ -24,6 +24,14 @@ async def test_playback_controls(live: Live) -> None:
         await live.call(tool, **args)
         await asyncio.sleep(1)
 
+    errors: list[str] = []
+
+    async def restore(tool: str, **args: object) -> None:
+        try:
+            await step(tool, **args)
+        except Exception as error:
+            errors.append(f"{tool}: {error}")
+
     try:
         if state["is_playing"]:
             await step("pause")
@@ -42,31 +50,20 @@ async def test_playback_controls(live: Live) -> None:
             await step("set_volume", volume_percent=max(volume - 5, 0))
         await step("transfer_playback", device_id=device["id"], play=True)
     finally:
-        restores: list[tuple[str, dict[str, object]]] = [
-            ("toggle_shuffle", {"state": state["shuffle_state"]}),
-            ("set_repeat", {"state": state["repeat_state"]}),
-        ]
+        await restore("toggle_shuffle", state=state["shuffle_state"])
+        await restore("set_repeat", state=state["repeat_state"])
         if can_set_volume:
-            restores.append(("set_volume", {"volume_percent": volume}))
-        errors = []
-        for tool, args in restores:
-            try:
-                await step(tool, **args)
-            except Exception as error:
-                errors.append(f"{tool}: {error}")
+            await restore("set_volume", volume_percent=volume)
         try:
             current = await live.client.get("/me/player", params={"additional_types": "episode"})
-            current_item = (current or {}).get("item", {}) or {}
-            original_item = state.get("item") or {}
-            if (
-                current
-                and original_item.get("id")
-                and current_item.get("id") == original_item.get("id")
-                and state.get("progress_ms") is not None
-            ):
-                await step("seek", position_ms=state["progress_ms"])
-            if current and current.get("is_playing") != state["is_playing"]:
-                await step("play" if state["is_playing"] else "pause")
         except Exception as error:
-            errors.append(f"position/play-pause: {error}")
+            errors.append(f"player state: {error}")
+            current = None
+        if current:
+            original_id = (state.get("item") or {}).get("id")
+            same_item = original_id and (current.get("item") or {}).get("id") == original_id
+            if same_item and state.get("progress_ms") is not None:
+                await restore("seek", position_ms=state["progress_ms"])
+            if current.get("is_playing") != state["is_playing"]:
+                await restore("play" if state["is_playing"] else "pause")
         assert not errors, f"could not restore playback state: {errors}"

@@ -55,6 +55,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, ch in enumerate(items, start=offset + 1):
+            if not ch:
+                lines.append(f"{i}. (unavailable)")
+                continue
             duration = format_duration_min(ch.get("duration_ms", 0))
             lines.append(f"{i}. {ch.get('name')} ({duration}) (ID: {ch.get('id')})")
         total = data.get("total", len(items))

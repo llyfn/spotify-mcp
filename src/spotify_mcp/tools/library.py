@@ -26,7 +26,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, item in enumerate(items, start=offset + 1):
-            track = item.get("track", {})
+            track = (item or {}).get("track")
+            if not track:
+                lines.append(f"{i}. (unavailable)")
+                continue
             artists = ", ".join(a["name"] for a in track.get("artists", []))
             lines.append(f"{i}. {track.get('name')} - {artists} (ID: {track.get('id')})")
         total = data.get("total", len(items))
@@ -44,7 +47,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for item in items:
-            album = item.get("album", {})
+            album = (item or {}).get("album")
+            if not album:
+                continue
             artists = ", ".join(a["name"] for a in album.get("artists", []))
             release = album.get("release_date", "N/A")
             lines.append(f"- {album.get('name')} by {artists} ({release}) (ID: {album.get('id')})")
@@ -63,7 +68,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for item in items:
-            show = item.get("show", {})
+            show = (item or {}).get("show")
+            if not show:
+                continue
             lines.append(f"- {show.get('name')} (ID: {show.get('id')})")
         total = data.get("total", len(items))
         return paged_list("Saved shows", lines, total, offset)
@@ -80,7 +87,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for item in items:
-            episode = item.get("episode", {})
+            episode = (item or {}).get("episode")
+            if not episode:
+                continue
             release = episode.get("release_date", "N/A")
             lines.append(f"- {episode.get('name')} ({release}) (ID: {episode.get('id')})")
         total = data.get("total", len(items))
@@ -98,6 +107,8 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for item in items:
+            if not item:
+                continue
             authors = ", ".join(a["name"] for a in item.get("authors", []))
             lines.append(f"- {item.get('name')} by {authors} (ID: {item.get('id')})")
         total = data.get("total", len(items))

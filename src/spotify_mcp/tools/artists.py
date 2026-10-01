@@ -49,6 +49,8 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for a in items:
+            if not a:
+                continue
             artists = ", ".join(ar["name"] for ar in a.get("artists", []))
             album_type = a.get("album_type", "")
             release = a.get("release_date", "N/A")

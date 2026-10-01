@@ -54,7 +54,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         queue = data.get("queue", []) or []
         result = f"Currently playing: {format_track(currently)}\n"
         if queue:
-            lines = [f"  {i}. {format_track(t)}" for i, t in enumerate(queue[:20], start=1)]
+            lines = [
+                f"  {i}. {format_track(t) if t else '(unavailable)'}"
+                for i, t in enumerate(queue[:20], start=1)
+            ]
             result += f"\nUp next ({len(queue)}):\n" + "\n".join(lines)
         else:
             result += "\nQueue is empty."
@@ -71,6 +74,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             return "No top tracks."
         lines = []
         for i, t in enumerate(items, start=1):
+            if not t:
+                lines.append(f"{i}. (unavailable)")
+                continue
             artists = ", ".join(a["name"] for a in t.get("artists", []))
             lines.append(f"{i}. {t.get('name')} - {artists}")
         return "Top tracks (last ~6 months):\n" + "\n".join(lines)
@@ -86,5 +92,8 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
             return "No top artists."
         lines = []
         for i, a in enumerate(items, start=1):
+            if not a:
+                lines.append(f"{i}. (unavailable)")
+                continue
             lines.append(f"{i}. {a.get('name')}")
         return "Top artists (last ~6 months):\n" + "\n".join(lines)

@@ -33,7 +33,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = (items_paged or {}).get("items", [])
         track_lines = []
         for i, entry in enumerate(items[:20], start=1):
-            item = entry.get("item")
+            item = (entry or {}).get("item")
             if item:
                 artists = ", ".join(a["name"] for a in item.get("artists", []))
                 track_lines.append(f"  {i}. {item['name']} - {artists}")
@@ -104,10 +104,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, entry in enumerate(items, start=offset + 1):
-            item = entry.get("item")
+            item = (entry or {}).get("item")
             if item:
                 artists = ", ".join(a["name"] for a in item.get("artists", []))
-                added_by = entry.get("added_by", {}).get("id", "unknown")
+                added_by = (entry.get("added_by") or {}).get("id", "unknown")
                 lines.append(f"{i}. {item['name']} - {artists} (added by: {added_by})")
         total = data.get("total", len(items))
         return paged_list("Playlist items", lines, total, offset)
@@ -189,6 +189,8 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for p in items:
+            if not p:
+                continue
             owner = p.get("owner", {}).get("display_name", "Unknown")
             items_ref = p.get("items")
             if items_ref:

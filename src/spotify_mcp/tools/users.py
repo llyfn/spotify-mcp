@@ -47,6 +47,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, item in enumerate(items, start=offset + 1):
+            if not item:
+                lines.append(f"{i}. (unavailable)")
+                continue
             if item_type == "artists":
                 lines.append(f"{i}. {item.get('name')} (ID: {item.get('id')})")
             else:

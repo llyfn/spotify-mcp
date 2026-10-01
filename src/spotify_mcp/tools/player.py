@@ -234,7 +234,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         queue = data.get("queue", [])
         result = f"Currently playing: {format_track(currently)}\n"
         if queue:
-            lines = [f"  {i}. {format_track(t)}" for i, t in enumerate(queue[:20], start=1)]
+            lines = [
+                f"  {i}. {format_track(t) if t else '(unavailable)'}"
+                for i, t in enumerate(queue[:20], start=1)
+            ]
             result += f"\nUp next ({len(queue)} in queue):\n" + "\n".join(lines)
         else:
             result += "\nQueue is empty."
@@ -265,7 +268,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, item in enumerate(items, start=1):
-            track = item.get("track", {})
+            track = (item or {}).get("track")
+            if not track:
+                lines.append(f"{i}. (unavailable)")
+                continue
             played_at = item.get("played_at", "N/A")
             lines.append(f"{i}. {format_track(track)} (played at: {played_at})")
         if not lines:

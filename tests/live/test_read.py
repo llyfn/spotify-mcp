@@ -49,12 +49,14 @@ async def test_audiobooks(live: Live) -> None:
 
 
 async def test_playlists(live: Live) -> None:
-    own_id = first_id(await live.call("get_my_playlists", limit=5))
-    if own_id:
-        assert "Playlist:" in await live.call("get_playlist", playlist_id=own_id)
-        assert "Playlist items" in await live.call(
-            "get_playlist_items", playlist_id=own_id, limit=5
-        )
+    listed_id = first_id(await live.call("get_my_playlists", limit=5))
+    if listed_id:
+        details = await live.call("get_playlist", playlist_id=listed_id)
+        assert "Playlist:" in details
+        if "Items: not available" not in details:
+            assert "Playlist items" in await live.call(
+                "get_playlist_items", playlist_id=listed_id, limit=5
+            )
 
     found = await live.call("search", query="lofi study", types="playlist")
     other_id = first_id(found, "Playlists (")

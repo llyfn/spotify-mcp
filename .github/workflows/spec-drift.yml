@@ -1,0 +1,22 @@
+name: Spec drift
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  pull_request:
+    paths:
+      - "src/**"
+      - "scripts/check_spec_drift.py"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-groups
+      - name: Check API calls against Spotify's OpenAPI spec
+        run: uv run python scripts/check_spec_drift.py

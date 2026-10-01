@@ -23,8 +23,8 @@ async def test_library_round_trip(live: Live, kind: str) -> None:
     if ": saved" in await live.call("check_saved_in_library", uris=[uri]):
         pytest.skip(f"{uri} is already in the library; leaving it untouched")
 
-    await live.call("save_to_library", uris=[uri])
     try:
+        await live.call("save_to_library", uris=[uri])
         assert ": saved" in await live.call("check_saved_in_library", uris=[uri])
     finally:
         await live.call("remove_from_library", uris=[uri])
@@ -41,6 +41,7 @@ async def test_playlist_lifecycle(live: Live) -> None:
     created = await live.call("create_playlist", name="spotify-mcp live test", public=False)
     match = re.search(r"^ID: (\S+)$", created, re.MULTILINE)
     assert match
+    assert match.group(1) != "None"
     playlist_id = match.group(1)
     try:
         await live.call("update_playlist", playlist_id=playlist_id, description="temporary")

@@ -10,6 +10,7 @@ from mcp.server.fastmcp import FastMCP
 from spotify_mcp import resources as resources_mod
 from spotify_mcp.auth import AuthManager
 from spotify_mcp.client import SpotifyClient
+from spotify_mcp.config import CREDENTIALS_FILE
 from spotify_mcp.tools import register_all_tools
 from tests.live._helpers import Live
 
@@ -32,6 +33,11 @@ def _isolate_credentials() -> None:
 
 @pytest.fixture
 async def live() -> AsyncIterator[Live]:
+    if not CREDENTIALS_FILE.exists():
+        pytest.skip(
+            "no stored Spotify login at ~/.spotify-mcp/credentials.json; "
+            "run the server once to log in"
+        )
     client = SpotifyClient(AuthManager())
     mcp = FastMCP("live")
     register_all_tools(mcp, client)

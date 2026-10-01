@@ -55,9 +55,18 @@ async def test_playback_controls(live: Live) -> None:
             except Exception as error:
                 errors.append(f"{tool}: {error}")
         try:
-            current = await live.client.get("/me/player")
+            current = await live.client.get("/me/player", params={"additional_types": "episode"})
+            current_item = (current or {}).get("item", {}) or {}
+            original_item = state.get("item") or {}
+            if (
+                current
+                and original_item.get("id")
+                and current_item.get("id") == original_item.get("id")
+                and state.get("progress_ms") is not None
+            ):
+                await step("seek", position_ms=state["progress_ms"])
             if current and current.get("is_playing") != state["is_playing"]:
                 await step("play" if state["is_playing"] else "pause")
         except Exception as error:
-            errors.append(f"play/pause: {error}")
+            errors.append(f"position/play-pause: {error}")
         assert not errors, f"could not restore playback state: {errors}"

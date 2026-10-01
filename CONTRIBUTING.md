@@ -50,7 +50,7 @@ SPOTIFY_LIVE_TESTS=1 SPOTIFY_LIVE_WRITE=1 uv run pytest tests/live -v
 SPOTIFY_LIVE_TESTS=1 SPOTIFY_LIVE_PLAYBACK=1 uv run pytest tests/live -v
 ```
 
-Write and playback tests restore the state they change. Audiobook tests are skipped when your account's market has no audiobooks; set `SPOTIFY_LIVE_MARKET` to try another market. Every tool must be called by a live test; `tests/test_live_coverage.py` fails otherwise. Run all three tiers before a release.
+Write tests restore the library and delete the playlist they create. The playback test restores shuffle, repeat, volume, play/pause, and the position when the same item is still playing; it cannot restore the queue, so one extra track stays queued and a manually queued next item is consumed. Audiobook tests search the market in `SPOTIFY_LIVE_MARKET` (default `US`) and are skipped when it returns no audiobooks. Every tool must be called by a live test; `tests/test_live_coverage.py` fails otherwise. Run all three tiers before a release.
 
 ### Spec Drift Check
 
@@ -58,7 +58,7 @@ Write and playback tests restore the state they change. Audiobook tests are skip
 uv run python scripts/check_spec_drift.py
 ```
 
-Downloads Spotify's OpenAPI spec and fails if the code calls a deprecated or unknown endpoint, or sends a `limit` above the spec maximum. CI runs it weekly and on every pull request that touches `src/`.
+Downloads Spotify's OpenAPI spec and fails if the code calls a deprecated or unknown endpoint, or has a default `limit` above the spec maximum. CI runs it weekly and on every pull request that touches `src/`. Calls whose path is not a string literal cannot be checked and are listed in the output. GitHub disables scheduled workflows after 60 days without repository activity, so re-enable or run it manually on a quiet repository.
 
 ## Adding a New Tool
 
@@ -135,6 +135,7 @@ _MODULES = [
 - **Return human-readable strings**, not raw JSON. The LLM needs clean, formatted text.
 - **Include Spotify IDs** in output so the LLM can chain tool calls (e.g., search -> get details).
 - **Write clear docstrings.** The docstring becomes the tool description that the LLM sees. Keep it concise (1-2 sentences) and include `Args:` with parameter descriptions.
+- **Expect `null` list entries.** Spotify can return `null` inside list responses. Numbered lists print `N. (unavailable)`; bulleted lists skip the entry.
 - **Request minimum scopes.** Don't add scopes to `config.py` unless your endpoint actually requires them.
 - **Use the `client` methods** (`client.get()`, `client.post()`, etc.) — never use `httpx` directly.
 - **Handle pagination** with `limit` and `offset` parameters where applicable.

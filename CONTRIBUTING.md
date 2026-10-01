@@ -35,6 +35,31 @@ uv run ruff check .
 uv run ruff format .
 ```
 
+### Live Tests
+
+`tests/live/` runs every tool against the real Spotify API. It is skipped unless you opt in, and it needs `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and a stored login (`~/.spotify-mcp/credentials.json`).
+
+```bash
+# Read-only tools and resources
+SPOTIFY_LIVE_TESTS=1 uv run pytest tests/live -v
+
+# Also library and playlist writes (creates and deletes a "spotify-mcp live test" playlist)
+SPOTIFY_LIVE_TESTS=1 SPOTIFY_LIVE_WRITE=1 uv run pytest tests/live -v
+
+# Also playback control (needs an active device; changes what is playing and queues one track)
+SPOTIFY_LIVE_TESTS=1 SPOTIFY_LIVE_PLAYBACK=1 uv run pytest tests/live -v
+```
+
+Write and playback tests restore the state they change. Audiobook tests are skipped when your account's market has no audiobooks; set `SPOTIFY_LIVE_MARKET` to try another market. Every tool must be called by a live test; `tests/test_live_coverage.py` fails otherwise. Run all three tiers before a release.
+
+### Spec Drift Check
+
+```bash
+uv run python scripts/check_spec_drift.py
+```
+
+Downloads Spotify's OpenAPI spec and fails if the code calls a deprecated or unknown endpoint, or sends a `limit` above the spec maximum. CI runs it weekly and on every pull request that touches `src/`.
+
 ## Adding a New Tool
 
 Adding a tool is the most common contribution. Here's how:

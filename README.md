@@ -119,6 +119,7 @@ Development-mode Spotify apps have these restrictions (see the
 - Search returns at most 10 results per type.
 - Full playlist contents are only returned for playlists you own or collaborate on.
 - Following artists via `save_to_library`/`remove_from_library` relies on live API behaviour; the OpenAPI spec documents artist URIs only for the check endpoint.
+- Audiobook tools only return results in markets where Spotify offers audiobooks.
 
 ## Upgrading from 0.2.x
 

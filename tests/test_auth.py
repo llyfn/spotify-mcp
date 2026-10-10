@@ -9,7 +9,7 @@ import pytest
 import respx
 
 from spotify_mcp import config
-from spotify_mcp.auth import AuthManager
+from spotify_mcp.auth import AuthManager, _can_open_browser
 from spotify_mcp.exceptions import AuthenticationError
 
 
@@ -200,3 +200,24 @@ async def test_authenticate_runs_flow_even_with_valid_cached_token(
     monkeypatch.setattr(auth, "_run_auth_flow", flow)
     await auth.authenticate()
     assert calls == ["flow"]
+
+
+@pytest.mark.parametrize(
+    ("platform", "env", "expected"),
+    [
+        ("linux", {}, False),
+        ("linux", {"DISPLAY": ":0"}, True),
+        ("linux", {"WAYLAND_DISPLAY": "wayland-0"}, True),
+        ("darwin", {}, True),
+        ("win32", {}, True),
+    ],
+)
+def test_can_open_browser(
+    monkeypatch: pytest.MonkeyPatch, platform: str, env: dict[str, str], expected: bool
+) -> None:
+    monkeypatch.setattr("spotify_mcp.auth.sys.platform", platform)
+    for var in ("DISPLAY", "WAYLAND_DISPLAY"):
+        monkeypatch.delenv(var, raising=False)
+    for var, value in env.items():
+        monkeypatch.setenv(var, value)
+    assert _can_open_browser() is expected

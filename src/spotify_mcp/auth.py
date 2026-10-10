@@ -4,6 +4,7 @@ import asyncio
 import base64
 import contextlib
 import json
+import os
 import secrets
 import sys
 import time
@@ -30,6 +31,14 @@ from spotify_mcp.exceptions import AuthenticationError
 NOT_AUTHENTICATED_MESSAGE = (
     "Not authenticated with Spotify. Run `mcp-server-spotify auth` on the server host, then retry."
 )
+
+
+def _can_open_browser() -> bool:
+    # Without a display, webbrowser falls back to terminal browsers (lynx, w3m) that take
+    # over the terminal and cannot complete Spotify's login.
+    if sys.platform.startswith("linux"):
+        return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+    return True
 
 
 class AuthManager:
@@ -218,8 +227,9 @@ class AuthManager:
         server_thread = Thread(target=run_server, daemon=True)
         server_thread.start()
 
-        with contextlib.suppress(Exception):
-            webbrowser.open(auth_url)
+        if _can_open_browser():
+            with contextlib.suppress(Exception):
+                webbrowser.open(auth_url)
 
         # Wait for callback with timeout
         deadline = time.time() + 120

@@ -15,14 +15,14 @@ class FakeAuth:
     def __init__(self, tokens: list[str] | None = None) -> None:
         self._tokens = tokens or ["token-1"]
         self._idx = 0
-        self.invalidate_calls = 0
+        self.invalidated: list[str] = []
 
     async def get_access_token(self) -> str:
         token = self._tokens[min(self._idx, len(self._tokens) - 1)]
         return token
 
-    def invalidate(self) -> None:
-        self.invalidate_calls += 1
+    def invalidate(self, token: str) -> None:
+        self.invalidated.append(token)
         # Advance to next token to simulate re-auth giving a fresh one.
         self._idx = min(self._idx + 1, len(self._tokens) - 1)
 
@@ -82,7 +82,7 @@ async def test_401_triggers_invalidate_and_retries() -> None:
     )
     data = await client.get("/me")
     assert data == {"id": "user1"}
-    assert auth.invalidate_calls == 1
+    assert auth.invalidated == ["stale"]
     assert route.call_count == 2
     # Second call must use the refreshed token
     assert route.calls[1].request.headers["Authorization"] == "Bearer fresh"

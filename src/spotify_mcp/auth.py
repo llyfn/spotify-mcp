@@ -34,10 +34,10 @@ NOT_AUTHENTICATED_MESSAGE = (
 
 
 def _can_open_browser() -> bool:
-    # Without a display, webbrowser falls back to terminal browsers (lynx, w3m) that take
-    # over the terminal and cannot complete Spotify's login.
+    # Without a display or an explicit BROWSER, webbrowser falls back to terminal browsers
+    # (lynx, w3m) that take over the terminal and cannot complete Spotify's login.
     if sys.platform.startswith("linux"):
-        return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+        return any(os.environ.get(var) for var in ("BROWSER", "DISPLAY", "WAYLAND_DISPLAY"))
     return True
 
 
@@ -52,9 +52,12 @@ class AuthManager:
         self._rejected_token: str | None = None
         self._interactive = interactive
 
-    def invalidate(self) -> None:
-        """Mark the current access token as rejected so the next request refreshes."""
-        self._rejected_token = self._access_token
+    def invalidate(self, token: str) -> None:
+        """Mark `token` as rejected so the next request refreshes it."""
+        # A late 401 for a token that has already been replaced must not discard the new one.
+        if token != self._access_token:
+            return
+        self._rejected_token = token
         self._expires_at = 0
 
     async def get_access_token(self) -> str:

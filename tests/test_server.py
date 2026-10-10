@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
 import pytest
 from mcp.server.fastmcp import FastMCP
 from starlette.testclient import TestClient
@@ -188,6 +189,40 @@ def test_auth_command_exits_on_failure(
         server.main()
     assert exc.value.code == 1
     assert "Authentication timed out" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "error",
+    [OSError("[Errno 48] Address already in use"), httpx.ConnectError("connection refused")],
+)
+def test_auth_command_reports_os_and_network_errors(
+    spotify_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    error: Exception,
+) -> None:
+    async def authenticate(self: server.AuthManager) -> None:
+        raise error
+
+    monkeypatch.setattr(server.sys, "argv", ["mcp-server-spotify", "auth"])
+    monkeypatch.setattr(server.AuthManager, "authenticate", authenticate)
+    with pytest.raises(SystemExit) as exc:
+        server.main()
+    assert exc.value.code == 1
+    assert str(error) in capsys.readouterr().err
+
+
+def test_auth_command_exits_quietly_on_keyboard_interrupt(
+    spotify_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def authenticate(self: server.AuthManager) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(server.sys, "argv", ["mcp-server-spotify", "auth"])
+    monkeypatch.setattr(server.AuthManager, "authenticate", authenticate)
+    with pytest.raises(SystemExit) as exc:
+        server.main()
+    assert exc.value.code == 130
 
 
 @pytest.mark.parametrize(

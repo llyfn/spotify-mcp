@@ -5,6 +5,7 @@ import os
 import sys
 from collections.abc import Sequence
 
+import httpx
 import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -73,9 +74,11 @@ def _run_auth_command() -> None:
     validate_environment()
     try:
         asyncio.run(AuthManager().authenticate())
-    except AuthenticationError as exc:
+    except (AuthenticationError, OSError, httpx.HTTPError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
+    except KeyboardInterrupt:
+        sys.exit(130)
 
 
 def main() -> None:

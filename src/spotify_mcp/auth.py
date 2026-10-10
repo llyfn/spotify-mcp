@@ -52,6 +52,7 @@ class AuthManager:
             if self._access_token and time.time() < self._expires_at - 60:
                 return self._access_token
 
+            refresh_error: AuthenticationError | None = None
             # Try loading from disk
             if self._load_credentials():
                 if time.time() < self._expires_at - 60:
@@ -61,11 +62,15 @@ class AuthManager:
                     try:
                         await self._refresh_access_token()
                         return self._access_token  # type: ignore[return-value]
-                    except AuthenticationError:
-                        pass  # Fall through to full auth flow
+                    except AuthenticationError as exc:
+                        refresh_error = exc  # Fall through to full auth flow
 
             # Run full OAuth flow
             if not self._interactive:
+                if refresh_error is not None:
+                    raise AuthenticationError(
+                        f"{NOT_AUTHENTICATED_MESSAGE} (refresh failed: {refresh_error})"
+                    ) from refresh_error
                 raise AuthenticationError(NOT_AUTHENTICATED_MESSAGE)
             await self._run_auth_flow()
             return self._access_token  # type: ignore[return-value]

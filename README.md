@@ -134,7 +134,7 @@ The server uses Spotify's **Authorization Code** flow:
 5. Tokens are stored securely in `~/.spotify-mcp/credentials.json`
 6. Tokens are automatically refreshed when they expire
 
-If running in a headless environment (SSH, Docker), the auth URL will be printed to stderr — copy and paste it into a browser manually.
+In stdio mode, if running in a headless environment (SSH, Docker), the auth URL will be printed to stderr — copy and paste it into a browser manually.
 
 ### Remote servers
 
@@ -145,7 +145,9 @@ ssh -L 8888:127.0.0.1:8888 you@server   # forwards Spotify's callback to the ser
 mcp-server-spotify auth                  # run on the server, in that SSH session, with your SPOTIFY_* env vars
 ```
 
-Open the printed URL in your local browser. Alternatively, run `mcp-server-spotify auth` on any machine and copy `~/.spotify-mcp/credentials.json` to the server (for containers, into a volume mounted at the user's `~/.spotify-mcp`).
+`uvx` users run `uvx mcp-server-spotify auth`. Open the printed URL in your local browser. Alternatively, run `mcp-server-spotify auth` on any machine and copy `~/.spotify-mcp/credentials.json` to the server (for containers, into a volume mounted at the user's `~/.spotify-mcp`).
+
+Set `SPOTIFY_MCP_AUTH_TOKEN` whenever the server is reachable from another machine, including through a reverse proxy.
 
 ### Re-authenticating
 

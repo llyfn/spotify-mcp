@@ -202,6 +202,29 @@ async def test_authenticate_runs_flow_even_with_valid_cached_token(
     assert calls == ["flow"]
 
 
+@respx.mock
+async def test_invalidated_token_is_refreshed_even_if_stored_expiry_is_valid(
+    spotify_env: None,
+) -> None:
+    _write_credentials(config.CREDENTIALS_FILE)
+    respx.post(config.SPOTIFY_TOKEN_URL).mock(
+        return_value=httpx.Response(200, json={"access_token": "refreshed-access"})
+    )
+    auth = AuthManager()
+    assert await auth.get_access_token() == "stored-access"
+    auth.invalidate()
+    assert await auth.get_access_token() == "refreshed-access"
+
+
+async def test_invalidate_uses_new_token_written_by_another_process() -> None:
+    _write_credentials(config.CREDENTIALS_FILE)
+    auth = AuthManager()
+    assert await auth.get_access_token() == "stored-access"
+    auth.invalidate()
+    _write_credentials(config.CREDENTIALS_FILE, access_token="reauthorized-access")
+    assert await auth.get_access_token() == "reauthorized-access"
+
+
 @pytest.mark.parametrize(
     ("platform", "env", "expected"),
     [

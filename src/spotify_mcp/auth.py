@@ -49,10 +49,12 @@ class AuthManager:
         self._access_token: str | None = None
         self._refresh_token: str | None = None
         self._expires_at: float = 0
+        self._rejected_token: str | None = None
         self._interactive = interactive
 
     def invalidate(self) -> None:
-        """Mark the current access token as expired so the next request refreshes."""
+        """Mark the current access token as rejected so the next request refreshes."""
+        self._rejected_token = self._access_token
         self._expires_at = 0
 
     async def get_access_token(self) -> str:
@@ -64,7 +66,11 @@ class AuthManager:
             refresh_error: AuthenticationError | None = None
             # Try loading from disk
             if self._load_credentials():
-                if time.time() < self._expires_at - 60:
+                # The file still holds the rejected token with its original expiry unless
+                # another process (e.g. `mcp-server-spotify auth`) has replaced it.
+                if self._access_token != self._rejected_token and time.time() < (
+                    self._expires_at - 60
+                ):
                     return self._access_token  # type: ignore[return-value]
                 # Token expired, try refresh
                 if self._refresh_token:

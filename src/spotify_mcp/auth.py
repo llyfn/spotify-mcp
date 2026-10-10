@@ -27,15 +27,20 @@ from spotify_mcp.config import (
 )
 from spotify_mcp.exceptions import AuthenticationError
 
+NOT_AUTHENTICATED_MESSAGE = (
+    "Not authenticated with Spotify. Run `mcp-server-spotify auth` on the server host, then retry."
+)
+
 
 class AuthManager:
     """Manages OAuth tokens: loading, refreshing, and running the full auth flow."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, interactive: bool = True) -> None:
         self._lock = asyncio.Lock()
         self._access_token: str | None = None
         self._refresh_token: str | None = None
         self._expires_at: float = 0
+        self._interactive = interactive
 
     def invalidate(self) -> None:
         """Mark the current access token as expired so the next request refreshes."""
@@ -60,8 +65,15 @@ class AuthManager:
                         pass  # Fall through to full auth flow
 
             # Run full OAuth flow
+            if not self._interactive:
+                raise AuthenticationError(NOT_AUTHENTICATED_MESSAGE)
             await self._run_auth_flow()
             return self._access_token  # type: ignore[return-value]
+
+    async def authenticate(self) -> None:
+        """Run the browser authorization flow and store new tokens, ignoring cached ones."""
+        async with self._lock:
+            await self._run_auth_flow()
 
     def _load_credentials(self) -> bool:
         """Load credentials from disk. Returns True if credentials were found."""

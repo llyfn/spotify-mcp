@@ -19,6 +19,13 @@ def _isolate_credentials(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Ite
     yield creds_dir
 
 
+@pytest.fixture(autouse=True)
+def _isolate_http_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the developer's shell transport and auth token out of tests."""
+    for var in ("SPOTIFY_MCP_TRANSPORT", "SPOTIFY_MCP_AUTH_TOKEN"):
+        monkeypatch.delenv(var, raising=False)
+
+
 @pytest.fixture
 def spotify_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Provide fake Spotify OAuth env vars."""

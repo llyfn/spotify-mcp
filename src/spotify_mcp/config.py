@@ -51,6 +51,30 @@ def get_redirect_uri() -> str:
     return os.environ.get("SPOTIFY_REDIRECT_URI", DEFAULT_REDIRECT_URI)
 
 
+MIN_AUTH_TOKEN_LENGTH = 32
+
+
+def get_mcp_auth_token() -> str | None:
+    return os.environ.get("SPOTIFY_MCP_AUTH_TOKEN", "").strip() or None
+
+
+def validate_http_environment() -> None:
+    """Exit with a helpful error if the HTTP transport settings are invalid or unsafe."""
+    errors: list[str] = []
+    token = get_mcp_auth_token()
+    if token is not None and len(token) < MIN_AUTH_TOKEN_LENGTH:
+        errors.append(
+            f"SPOTIFY_MCP_AUTH_TOKEN must be at least {MIN_AUTH_TOKEN_LENGTH} characters. "
+            'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+        )
+    if token is not None and not token.isascii():
+        errors.append("SPOTIFY_MCP_AUTH_TOKEN must contain only ASCII characters.")
+    if errors:
+        for error in errors:
+            print(f"Error: {error}", file=sys.stderr)
+        sys.exit(1)
+
+
 def validate_environment() -> None:
     """Exit with a helpful error if required env vars are missing."""
     missing = [

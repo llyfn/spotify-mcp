@@ -52,3 +52,33 @@ def test_all_scopes_includes_required_scopes() -> None:
 def test_all_scopes_excludes_user_read_email() -> None:
     # GET /me no longer returns email, so the scope grants nothing.
     assert "user-read-email" not in config.ALL_SCOPES.split()
+
+
+def test_auth_token_is_none_when_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SPOTIFY_MCP_AUTH_TOKEN", raising=False)
+    assert config.get_mcp_auth_token() is None
+
+
+def test_auth_token_is_none_when_blank(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", "   ")
+    assert config.get_mcp_auth_token() is None
+
+
+def test_auth_token_is_stripped(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", "t" * 40 + "\n")
+    assert config.get_mcp_auth_token() == "t" * 40
+
+
+def test_validate_http_environment_passes_without_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SPOTIFY_MCP_AUTH_TOKEN", raising=False)
+    config.validate_http_environment()
+
+
+def test_validate_http_environment_rejects_short_token(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", "short")
+    with pytest.raises(SystemExit) as exc:
+        config.validate_http_environment()
+    assert exc.value.code == 1
+    assert "SPOTIFY_MCP_AUTH_TOKEN" in capsys.readouterr().err

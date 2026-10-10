@@ -92,3 +92,85 @@ def test_validate_http_environment_rejects_non_ascii_token(
         config.validate_http_environment()
     assert exc.value.code == 1
     assert "SPOTIFY_MCP_AUTH_TOKEN" in capsys.readouterr().err
+
+
+@pytest.fixture
+def http_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    for var in (
+        "SPOTIFY_MCP_HOST",
+        "SPOTIFY_MCP_PORT",
+        "SPOTIFY_MCP_ALLOWED_HOSTS",
+        "SPOTIFY_MCP_AUTH_TOKEN",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
+def test_host_and_port_defaults(http_env: None) -> None:
+    assert config.get_mcp_host() == "127.0.0.1"
+    assert config.get_mcp_port() == 8000
+
+
+def test_port_override(http_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_PORT", "9000")
+    assert config.get_mcp_port() == 9000
+
+
+@pytest.mark.parametrize("raw", ["abc", "0", "65536", "-1"])
+def test_invalid_port_raises(http_env: None, monkeypatch: pytest.MonkeyPatch, raw: str) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_PORT", raw)
+    with pytest.raises(ValueError):
+        config.get_mcp_port()
+
+
+def test_allowed_hosts_are_split_and_trimmed(
+    http_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_ALLOWED_HOSTS", " spotify.example.com , 10.0.0.5:*,, ")
+    assert config.get_mcp_allowed_hosts() == ["spotify.example.com", "10.0.0.5:*"]
+
+
+@pytest.mark.parametrize(
+    ("host", "expected"),
+    [("127.0.0.1", True), ("localhost", True), ("::1", True), ("0.0.0.0", False), ("::", False)],
+)
+def test_is_loopback_host(host: str, expected: bool) -> None:
+    assert config.is_loopback_host(host) is expected
+
+
+def _exit_message(capsys: pytest.CaptureFixture[str]) -> str:
+    with pytest.raises(SystemExit) as exc:
+        config.validate_http_environment()
+    assert exc.value.code == 1
+    return capsys.readouterr().err
+
+
+def test_validate_rejects_invalid_port(
+    http_env: None, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_PORT", "abc")
+    assert "SPOTIFY_MCP_PORT" in _exit_message(capsys)
+
+
+def test_validate_rejects_remote_bind_without_token(
+    http_env: None, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("SPOTIFY_MCP_ALLOWED_HOSTS", "spotify.example.com")
+    assert "SPOTIFY_MCP_AUTH_TOKEN" in _exit_message(capsys)
+
+
+def test_validate_rejects_remote_bind_without_allowed_hosts(
+    http_env: None, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", "t" * 43)
+    assert "SPOTIFY_MCP_ALLOWED_HOSTS" in _exit_message(capsys)
+
+
+def test_validate_accepts_complete_remote_config(
+    http_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", "t" * 43)
+    monkeypatch.setenv("SPOTIFY_MCP_ALLOWED_HOSTS", "spotify.example.com")
+    config.validate_http_environment()

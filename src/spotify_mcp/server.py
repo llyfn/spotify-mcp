@@ -75,7 +75,8 @@ def _run_auth_command() -> None:
     try:
         asyncio.run(AuthManager().authenticate())
     except (AuthenticationError, OSError, httpx.HTTPError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        # Some httpx errors (e.g. timeouts) carry an empty message.
+        print(f"Error: {str(exc) or type(exc).__name__}", file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
         sys.exit(130)

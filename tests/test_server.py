@@ -193,7 +193,11 @@ def test_auth_command_exits_on_failure(
 
 @pytest.mark.parametrize(
     "error",
-    [OSError("[Errno 48] Address already in use"), httpx.ConnectError("connection refused")],
+    [
+        OSError("[Errno 48] Address already in use"),
+        httpx.ConnectError("connection refused"),
+        httpx.ReadTimeout(""),
+    ],
 )
 def test_auth_command_reports_os_and_network_errors(
     spotify_env: None,
@@ -209,7 +213,7 @@ def test_auth_command_reports_os_and_network_errors(
     with pytest.raises(SystemExit) as exc:
         server.main()
     assert exc.value.code == 1
-    assert str(error) in capsys.readouterr().err
+    assert f"Error: {str(error) or type(error).__name__}" in capsys.readouterr().err
 
 
 def test_auth_command_exits_quietly_on_keyboard_interrupt(

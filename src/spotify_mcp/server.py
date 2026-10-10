@@ -3,17 +3,23 @@ from __future__ import annotations
 import os
 import sys
 
+import uvicorn
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
+from starlette.types import ASGIApp
 
 from spotify_mcp import prompts, resources
 from spotify_mcp.auth import AuthManager
 from spotify_mcp.client import SpotifyClient
-from spotify_mcp.config import validate_environment
+from spotify_mcp.config import get_mcp_auth_token, validate_environment, validate_http_environment
+from spotify_mcp.http_auth import BearerTokenMiddleware
 from spotify_mcp.tools import register_all_tools
 
 mcp = FastMCP("spotify")
 
 _VALID_TRANSPORTS = ("stdio", "sse", "streamable-http")
+_LOOPBACK_ALLOWED_HOSTS = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+_LOOPBACK_ALLOWED_ORIGINS = ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"]
 
 
 def _setup() -> SpotifyClient:
@@ -38,6 +44,31 @@ def _resolve_transport() -> str:
     return raw
 
 
+def _build_http_app(server: FastMCP, transport: str, auth_token: str | None) -> ASGIApp:
+    # Set explicitly: older mcp releases default to no DNS-rebinding protection.
+    server.settings.transport_security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=list(_LOOPBACK_ALLOWED_HOSTS),
+        allowed_origins=list(_LOOPBACK_ALLOWED_ORIGINS),
+    )
+    app = server.streamable_http_app() if transport == "streamable-http" else server.sse_app()
+    if auth_token:
+        return BearerTokenMiddleware(app, auth_token)
+    return app
+
+
 def main() -> None:
+    transport = _resolve_transport()
+    if transport != "stdio":
+        validate_http_environment()
     _setup()
-    mcp.run(transport=_resolve_transport())
+    if transport == "stdio":
+        mcp.run(transport="stdio")
+        return
+    app = _build_http_app(mcp, transport, get_mcp_auth_token())
+    uvicorn.run(
+        app,
+        host=mcp.settings.host,
+        port=mcp.settings.port,
+        log_level=mcp.settings.log_level.lower(),
+    )

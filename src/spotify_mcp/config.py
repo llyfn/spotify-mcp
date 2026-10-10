@@ -86,37 +86,38 @@ def is_loopback_host(host: str) -> bool:
     return host in _LOOPBACK_HOSTS
 
 
-def validate_http_environment() -> None:
-    """Exit with a helpful error if the HTTP transport settings are invalid or unsafe."""
+def validate_http_environment() -> str:
+    """Return the auth token, or exit with an error if the HTTP settings are invalid."""
     errors: list[str] = []
     token = get_mcp_auth_token()
-    if token is not None and len(token) < MIN_AUTH_TOKEN_LENGTH:
+    if token is None:
+        errors.append(
+            "SPOTIFY_MCP_AUTH_TOKEN is required for the sse and streamable-http transports. "
+            'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+        )
+    elif len(token) < MIN_AUTH_TOKEN_LENGTH:
         errors.append(
             f"SPOTIFY_MCP_AUTH_TOKEN must be at least {MIN_AUTH_TOKEN_LENGTH} characters. "
             'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
         )
-    if token is not None and not token.isascii():
+    elif not token.isascii():
         errors.append("SPOTIFY_MCP_AUTH_TOKEN must contain only ASCII characters.")
     try:
         get_mcp_port()
     except ValueError:
         errors.append("SPOTIFY_MCP_PORT must be an integer between 1 and 65535.")
     host = get_mcp_host()
-    allowed_hosts = get_mcp_allowed_hosts()
-    if token is None and (not is_loopback_host(host) or allowed_hosts):
-        errors.append(
-            "SPOTIFY_MCP_AUTH_TOKEN is required when binding to a non-loopback address "
-            "or when SPOTIFY_MCP_ALLOWED_HOSTS is set."
-        )
-    if not is_loopback_host(host) and not allowed_hosts:
+    if not is_loopback_host(host) and not get_mcp_allowed_hosts():
         errors.append(
             f"SPOTIFY_MCP_ALLOWED_HOSTS is required when binding to {host} "
-            "(the Host header values clients will send, e.g. spotify.example.com)."
+            "(loopback values are 127.0.0.1, localhost and ::1; list the Host header "
+            "clients send, e.g. spotify.example.com or 203.0.113.5:*)."
         )
-    if errors:
+    if errors or token is None:
         for error in errors:
             print(f"Error: {error}", file=sys.stderr)
         sys.exit(1)
+    return token
 
 
 def validate_environment() -> None:

@@ -14,7 +14,6 @@ from spotify_mcp.auth import AuthManager
 from spotify_mcp.client import SpotifyClient
 from spotify_mcp.config import (
     get_mcp_allowed_hosts,
-    get_mcp_auth_token,
     get_mcp_host,
     get_mcp_port,
     validate_environment,
@@ -55,7 +54,7 @@ def _resolve_transport() -> str:
 def _build_http_app(
     server: FastMCP,
     transport: str,
-    auth_token: str | None,
+    auth_token: str,
     allowed_hosts: Sequence[str] = (),
 ) -> ASGIApp:
     # Set explicitly: older mcp releases default to no DNS-rebinding protection.
@@ -65,22 +64,20 @@ def _build_http_app(
         allowed_origins=list(_LOOPBACK_ALLOWED_ORIGINS),
     )
     app = server.streamable_http_app() if transport == "streamable-http" else server.sse_app()
-    if auth_token:
-        return BearerTokenMiddleware(app, auth_token)
-    return app
+    return BearerTokenMiddleware(app, auth_token)
 
 
 def main() -> None:
     transport = _resolve_transport()
-    if transport != "stdio":
-        validate_http_environment()
-    _setup()
     if transport == "stdio":
+        _setup()
         mcp.run(transport="stdio")
         return
+    auth_token = validate_http_environment()
+    _setup()
     mcp.settings.host = get_mcp_host()
     mcp.settings.port = get_mcp_port()
-    app = _build_http_app(mcp, transport, get_mcp_auth_token(), get_mcp_allowed_hosts())
+    app = _build_http_app(mcp, transport, auth_token, get_mcp_allowed_hosts())
     uvicorn.run(
         app,
         host=mcp.settings.host,

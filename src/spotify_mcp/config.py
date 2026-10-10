@@ -67,6 +67,8 @@ def validate_http_environment() -> None:
             f"SPOTIFY_MCP_AUTH_TOKEN must be at least {MIN_AUTH_TOKEN_LENGTH} characters. "
             'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
         )
+    if token is not None and not token.isascii():
+        errors.append("SPOTIFY_MCP_AUTH_TOKEN must contain only ASCII characters.")
     if errors:
         for error in errors:
             print(f"Error: {error}", file=sys.stderr)

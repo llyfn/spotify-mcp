@@ -82,3 +82,13 @@ def test_validate_http_environment_rejects_short_token(
         config.validate_http_environment()
     assert exc.value.code == 1
     assert "SPOTIFY_MCP_AUTH_TOKEN" in capsys.readouterr().err
+
+
+def test_validate_http_environment_rejects_non_ascii_token(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", "ö" * 40)
+    with pytest.raises(SystemExit) as exc:
+        config.validate_http_environment()
+    assert exc.value.code == 1
+    assert "SPOTIFY_MCP_AUTH_TOKEN" in capsys.readouterr().err

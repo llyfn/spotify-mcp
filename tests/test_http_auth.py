@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -70,3 +71,34 @@ def test_empty_token_is_rejected_at_construction() -> None:
     inner = Starlette(routes=[Route("/", _ok)])
     with pytest.raises(ValueError):
         BearerTokenMiddleware(inner, "")
+
+
+async def _run_websocket(headers: list[tuple[bytes, bytes]]) -> tuple[list[str], list[dict]]:
+    reached: list[str] = []
+    sent: list[dict] = []
+
+    async def inner(scope: dict, receive: object, send: object) -> None:
+        reached.append(scope["type"])
+
+    async def receive() -> dict:
+        return {"type": "websocket.connect"}
+
+    async def send(message: dict) -> None:
+        sent.append(message)
+
+    scope = {"type": "websocket", "path": "/", "headers": headers}
+    await BearerTokenMiddleware(inner, TOKEN)(scope, receive, send)
+    return reached, sent
+
+
+def test_websocket_without_token_is_closed_before_reaching_app() -> None:
+    reached, sent = asyncio.run(_run_websocket([]))
+    assert reached == []
+    assert sent == [{"type": "websocket.close", "code": 1008}]
+
+
+def test_websocket_with_correct_token_reaches_wrapped_app() -> None:
+    headers = [(b"authorization", f"Bearer {TOKEN}".encode())]
+    reached, sent = asyncio.run(_run_websocket(headers))
+    assert reached == ["websocket"]
+    assert sent == []

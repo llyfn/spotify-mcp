@@ -11,6 +11,8 @@ class BearerTokenMiddleware:
     """Reject HTTP requests that lack ``Authorization: Bearer <token>``."""
 
     def __init__(self, app: ASGIApp, token: str) -> None:
+        if not token:
+            raise ValueError("token must not be empty")
         self._app = app
         self._token = token.encode()
 

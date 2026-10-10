@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import pytest
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
@@ -63,3 +64,9 @@ def test_lifespan_reaches_wrapped_app() -> None:
     with TestClient(BearerTokenMiddleware(inner, TOKEN)):
         pass
     assert started == [True]
+
+
+def test_empty_token_is_rejected_at_construction() -> None:
+    inner = Starlette(routes=[Route("/", _ok)])
+    with pytest.raises(ValueError):
+        BearerTokenMiddleware(inner, "")

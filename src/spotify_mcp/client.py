@@ -89,7 +89,7 @@ class SpotifyClient:
 
             # 401 Unauthorized - token may have expired mid-request
             if response.status_code == 401 and attempt == 0:
-                self._auth.invalidate()
+                self._auth.invalidate(token)
                 continue
 
             # 429 Rate limited - exponential backoff

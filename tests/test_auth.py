@@ -9,7 +9,7 @@ import pytest
 import respx
 
 from spotify_mcp import config
-from spotify_mcp.auth import AuthManager
+from spotify_mcp.auth import AuthManager, _can_open_browser
 from spotify_mcp.exceptions import AuthenticationError
 
 
@@ -119,7 +119,7 @@ async def test_invalidate_resets_expiry() -> None:
     auth = AuthManager()
     auth._access_token = "x"
     auth._expires_at = time.time() + 9999
-    auth.invalidate()
+    auth.invalidate("x")
     assert auth._expires_at == 0
 
 
@@ -200,3 +200,68 @@ async def test_authenticate_runs_flow_even_with_valid_cached_token(
     monkeypatch.setattr(auth, "_run_auth_flow", flow)
     await auth.authenticate()
     assert calls == ["flow"]
+
+
+@respx.mock
+async def test_invalidated_token_is_refreshed_even_if_stored_expiry_is_valid(
+    spotify_env: None,
+) -> None:
+    _write_credentials(config.CREDENTIALS_FILE)
+    respx.post(config.SPOTIFY_TOKEN_URL).mock(
+        return_value=httpx.Response(200, json={"access_token": "refreshed-access"})
+    )
+    auth = AuthManager()
+    assert await auth.get_access_token() == "stored-access"
+    auth.invalidate("stored-access")
+    assert await auth.get_access_token() == "refreshed-access"
+
+
+@respx.mock
+async def test_late_401_for_an_already_replaced_token_does_not_refresh_again(
+    spotify_env: None,
+) -> None:
+    _write_credentials(config.CREDENTIALS_FILE)
+    route = respx.post(config.SPOTIFY_TOKEN_URL).mock(
+        side_effect=[
+            httpx.Response(200, json={"access_token": "refreshed-1"}),
+            httpx.Response(200, json={"access_token": "refreshed-2"}),
+        ]
+    )
+    auth = AuthManager()
+    assert await auth.get_access_token() == "stored-access"
+    auth.invalidate("stored-access")
+    assert await auth.get_access_token() == "refreshed-1"
+    auth.invalidate("stored-access")
+    assert await auth.get_access_token() == "refreshed-1"
+    assert route.call_count == 1
+
+
+async def test_invalidate_uses_new_token_written_by_another_process() -> None:
+    _write_credentials(config.CREDENTIALS_FILE)
+    auth = AuthManager()
+    assert await auth.get_access_token() == "stored-access"
+    auth.invalidate("stored-access")
+    _write_credentials(config.CREDENTIALS_FILE, access_token="reauthorized-access")
+    assert await auth.get_access_token() == "reauthorized-access"
+
+
+@pytest.mark.parametrize(
+    ("platform", "env", "expected"),
+    [
+        ("linux", {}, False),
+        ("linux", {"DISPLAY": ":0"}, True),
+        ("linux", {"WAYLAND_DISPLAY": "wayland-0"}, True),
+        ("linux", {"BROWSER": "code --openExternal"}, True),
+        ("darwin", {}, True),
+        ("win32", {}, True),
+    ],
+)
+def test_can_open_browser(
+    monkeypatch: pytest.MonkeyPatch, platform: str, env: dict[str, str], expected: bool
+) -> None:
+    monkeypatch.setattr("spotify_mcp.auth.sys.platform", platform)
+    for var in ("BROWSER", "DISPLAY", "WAYLAND_DISPLAY"):
+        monkeypatch.delenv(var, raising=False)
+    for var, value in env.items():
+        monkeypatch.setenv(var, value)
+    assert _can_open_browser() is expected

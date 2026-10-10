@@ -142,12 +142,11 @@ def test_main_binds_configured_host_and_port(monkeypatch: pytest.MonkeyPatch) ->
     assert captured["port"] == 9123
 
 
-def test_main_ignores_fastmcp_host_and_port_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_main_overrides_preset_fastmcp_host_and_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Older mcp releases fill these from FASTMCP_HOST / FASTMCP_PORT, bypassing our validation.
     captured: dict[str, Any] = {}
-    monkeypatch.setattr(server.mcp.settings, "host", server.mcp.settings.host)
-    monkeypatch.setattr(server.mcp.settings, "port", server.mcp.settings.port)
-    monkeypatch.setenv("FASTMCP_HOST", "0.0.0.0")
-    monkeypatch.setenv("FASTMCP_PORT", "9999")
+    monkeypatch.setattr(server.mcp.settings, "host", "0.0.0.0")
+    monkeypatch.setattr(server.mcp.settings, "port", 9999)
     monkeypatch.setenv("SPOTIFY_MCP_TRANSPORT", "streamable-http")
     monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", TOKEN)
     monkeypatch.setattr(server, "_setup", lambda: None)

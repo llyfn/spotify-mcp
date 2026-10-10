@@ -67,10 +67,14 @@ def test_main_runs_stdio_through_fastmcp(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_main_runs_http_through_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, Any] = {}
+    monkeypatch.setattr(server.mcp.settings, "host", server.mcp.settings.host)
+    monkeypatch.setattr(server.mcp.settings, "port", server.mcp.settings.port)
     monkeypatch.setenv("SPOTIFY_MCP_TRANSPORT", "streamable-http")
     monkeypatch.delenv("SPOTIFY_MCP_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("SPOTIFY_MCP_HOST", raising=False)
+    monkeypatch.delenv("SPOTIFY_MCP_PORT", raising=False)
     monkeypatch.setattr(server, "_setup", lambda: None)
-    monkeypatch.setattr(server, "_build_http_app", lambda *a: "app")
+    monkeypatch.setattr(server, "_build_http_app", lambda *a, **k: "app")
     monkeypatch.setattr(server.uvicorn, "run", lambda app, **kw: captured.update(app=app, **kw))
     server.main()
     assert captured == {"app": "app", "host": "127.0.0.1", "port": 8000, "log_level": "info"}
@@ -105,3 +109,40 @@ def test_streamable_http_app_serves_authorized_initialize() -> None:
         base_url="http://127.0.0.1:8000",
     ) as client:
         assert client.post("/mcp", headers=headers, json=body).status_code == 200
+
+
+def test_sse_app_accepts_configured_allowed_host() -> None:
+    app = server._build_http_app(FastMCP("t"), "sse", TOKEN, ["spotify.example.com"])
+    client = TestClient(app, base_url="http://spotify.example.com")
+    response = client.post("/messages/", headers=AUTH, content=b"{}")
+    assert response.status_code == 400
+    assert response.text == "session_id is required"
+
+
+def test_configured_allowed_host_keeps_loopback_hosts() -> None:
+    app = FastMCP("t")
+    server._build_http_app(app, "sse", TOKEN, ["spotify.example.com"])
+    assert app.settings.transport_security is not None
+    assert app.settings.transport_security.allowed_hosts == [
+        "127.0.0.1:*",
+        "localhost:*",
+        "[::1]:*",
+        "spotify.example.com",
+    ]
+
+
+def test_main_binds_configured_host_and_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(server.mcp.settings, "host", server.mcp.settings.host)
+    monkeypatch.setattr(server.mcp.settings, "port", server.mcp.settings.port)
+    monkeypatch.setenv("SPOTIFY_MCP_TRANSPORT", "sse")
+    monkeypatch.setenv("SPOTIFY_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("SPOTIFY_MCP_PORT", "9123")
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", TOKEN)
+    monkeypatch.setenv("SPOTIFY_MCP_ALLOWED_HOSTS", "spotify.example.com")
+    monkeypatch.setattr(server, "_setup", lambda: None)
+    monkeypatch.setattr(server, "_build_http_app", lambda *a, **k: "app")
+    monkeypatch.setattr(server.uvicorn, "run", lambda app, **kw: captured.update(app=app, **kw))
+    server.main()
+    assert captured["host"] == "0.0.0.0"
+    assert captured["port"] == 9123

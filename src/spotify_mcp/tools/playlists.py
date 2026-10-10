@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from spotify_mcp.tools._utils import chunked, paged_list
+from spotify_mcp.tools._utils import UNAVAILABLE, chunked, paged_list
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -33,10 +33,12 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = (items_paged or {}).get("items", [])
         track_lines = []
         for i, entry in enumerate(items[:20], start=1):
-            item = entry.get("item")
-            if item:
-                artists = ", ".join(a["name"] for a in item.get("artists", []))
-                track_lines.append(f"  {i}. {item['name']} - {artists}")
+            item = (entry or {}).get("item")
+            if not item:
+                track_lines.append(f"  {i}. {UNAVAILABLE}")
+                continue
+            artists = ", ".join(a["name"] for a in item.get("artists", []))
+            track_lines.append(f"  {i}. {item['name']} - {artists}")
         lines = [
             f"Playlist: {data.get('name')}",
             f"Owner: {owner}",
@@ -104,11 +106,13 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, entry in enumerate(items, start=offset + 1):
-            item = entry.get("item")
-            if item:
-                artists = ", ".join(a["name"] for a in item.get("artists", []))
-                added_by = entry.get("added_by", {}).get("id", "unknown")
-                lines.append(f"{i}. {item['name']} - {artists} (added by: {added_by})")
+            item = (entry or {}).get("item")
+            if not item:
+                lines.append(f"{i}. {UNAVAILABLE}")
+                continue
+            artists = ", ".join(a["name"] for a in item.get("artists", []))
+            added_by = (entry.get("added_by") or {}).get("id", "unknown")
+            lines.append(f"{i}. {item['name']} - {artists} (added by: {added_by})")
         total = data.get("total", len(items))
         return paged_list("Playlist items", lines, total, offset)
 
@@ -189,6 +193,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for p in items:
+            if not p:
+                lines.append(f"- {UNAVAILABLE}")
+                continue
             owner = p.get("owner", {}).get("display_name", "Unknown")
             items_ref = p.get("items")
             if items_ref:

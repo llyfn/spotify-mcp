@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from spotify_mcp.tools._utils import UNAVAILABLE
+
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
@@ -28,6 +30,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         total = artists_page.get("total")
         lines = []
         for a in items:
+            if not a:
+                lines.append(f"- {UNAVAILABLE}")
+                continue
             lines.append(f"- {a.get('name')} (ID: {a.get('id')})")
         cursors = artists_page.get("cursors") or {}
         header = f"Followed artists ({len(items)}"

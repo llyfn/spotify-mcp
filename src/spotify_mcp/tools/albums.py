@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from spotify_mcp.tools._utils import format_duration_mmss, paged_list
+from spotify_mcp.tools._utils import UNAVAILABLE, format_duration_mmss, paged_list
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -24,6 +24,8 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         tracks = data.get("tracks", {}).get("items", [])
         track_list = "\n".join(
             f"  {i + 1}. {t['name']} ({format_duration_mmss(t.get('duration_ms', 0))})"
+            if t
+            else f"  {i + 1}. {UNAVAILABLE}"
             for i, t in enumerate(tracks)
         )
         artists = ", ".join(a["name"] for a in data.get("artists", []))
@@ -59,6 +61,9 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, t in enumerate(items, start=offset + 1):
+            if not t:
+                lines.append(f"{i}. {UNAVAILABLE}")
+                continue
             duration = format_duration_mmss(t.get("duration_ms", 0))
             artists = ", ".join(a["name"] for a in t.get("artists", []))
             lines.append(f"{i}. {t['name']} - {artists} ({duration})")

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from spotify_mcp.tools._utils import (
+    UNAVAILABLE,
     format_progress,
     format_track,
 )
@@ -200,7 +201,7 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
     async def get_devices() -> str:
         """Get the user's available Spotify devices."""
         data = await client.get("/me/player/devices")
-        devices = data.get("devices", [])
+        devices = [d for d in data.get("devices", []) if d]
         if not devices:
             return "No active devices found."
         lines = []
@@ -234,7 +235,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         queue = data.get("queue", [])
         result = f"Currently playing: {format_track(currently)}\n"
         if queue:
-            lines = [f"  {i}. {format_track(t)}" for i, t in enumerate(queue[:20], start=1)]
+            lines = [
+                f"  {i}. {format_track(t) if t else UNAVAILABLE}"
+                for i, t in enumerate(queue[:20], start=1)
+            ]
             result += f"\nUp next ({len(queue)} in queue):\n" + "\n".join(lines)
         else:
             result += "\nQueue is empty."
@@ -265,7 +269,10 @@ def register(mcp: FastMCP, client: SpotifyClient) -> None:
         items = data.get("items", [])
         lines = []
         for i, item in enumerate(items, start=1):
-            track = item.get("track", {})
+            track = (item or {}).get("track")
+            if not track:
+                lines.append(f"{i}. {UNAVAILABLE}")
+                continue
             played_at = item.get("played_at", "N/A")
             lines.append(f"{i}. {format_track(track)} (played at: {played_at})")
         if not lines:

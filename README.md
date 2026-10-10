@@ -108,7 +108,10 @@ Then point your client at the local checkout instead of `uvx`:
 | `SPOTIFY_CLIENT_SECRET` | Yes | — | Your Spotify app's Client Secret |
 | `SPOTIFY_REDIRECT_URI` | No | `http://127.0.0.1:8888/callback` | OAuth redirect URI |
 | `SPOTIFY_MCP_TRANSPORT` | No | `stdio` | MCP transport: `stdio`, `sse`, or `streamable-http` |
-| `SPOTIFY_MCP_AUTH_TOKEN` | No | — | Bearer token required on every `sse` / `streamable-http` request (min. 32 chars) |
+| `SPOTIFY_MCP_AUTH_TOKEN` | For `sse`/`streamable-http` | — | Bearer token clients must send on every request (min. 32 ASCII chars) |
+| `SPOTIFY_MCP_HOST` | No | `127.0.0.1` | HTTP bind address. Non-loopback values require `SPOTIFY_MCP_ALLOWED_HOSTS` |
+| `SPOTIFY_MCP_PORT` | No | `8000` | HTTP port |
+| `SPOTIFY_MCP_ALLOWED_HOSTS` | No | — | Comma-separated `Host` header values to accept, e.g. `spotify.example.com` or `10.0.0.5:*` |
 
 ## Spotify API notes
 

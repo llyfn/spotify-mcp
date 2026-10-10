@@ -21,8 +21,14 @@ def _isolate_credentials(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Ite
 
 @pytest.fixture(autouse=True)
 def _isolate_http_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep the developer's shell transport and auth token out of tests."""
-    for var in ("SPOTIFY_MCP_TRANSPORT", "SPOTIFY_MCP_AUTH_TOKEN"):
+    """Keep the developer's shell HTTP transport settings out of tests."""
+    for var in (
+        "SPOTIFY_MCP_TRANSPORT",
+        "SPOTIFY_MCP_AUTH_TOKEN",
+        "SPOTIFY_MCP_HOST",
+        "SPOTIFY_MCP_PORT",
+        "SPOTIFY_MCP_ALLOWED_HOSTS",
+    ):
         monkeypatch.delenv(var, raising=False)
 
 

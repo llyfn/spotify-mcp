@@ -16,20 +16,16 @@ AUTH = {"Authorization": f"Bearer {TOKEN}", **JSON}
 
 def test_build_http_app_enables_dns_rebinding_protection() -> None:
     app = FastMCP("test")
-    server._build_http_app(app, "sse", None)
+    server._build_http_app(app, "sse", TOKEN)
     security = app.settings.transport_security
     assert security is not None
     assert security.enable_dns_rebinding_protection is True
     assert security.allowed_hosts == ["127.0.0.1:*", "localhost:*", "[::1]:*"]
 
 
-def test_build_http_app_wraps_only_when_token_set() -> None:
-    assert isinstance(
-        server._build_http_app(FastMCP("a"), "streamable-http", TOKEN), BearerTokenMiddleware
-    )
-    assert not isinstance(
-        server._build_http_app(FastMCP("b"), "streamable-http", None), BearerTokenMiddleware
-    )
+@pytest.mark.parametrize("transport", ["sse", "streamable-http"])
+def test_build_http_app_always_requires_bearer_token(transport: str) -> None:
+    assert isinstance(server._build_http_app(FastMCP("a"), transport, TOKEN), BearerTokenMiddleware)
 
 
 def test_sse_app_rejects_request_without_token() -> None:
@@ -67,10 +63,12 @@ def test_main_runs_stdio_through_fastmcp(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_main_runs_http_through_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, Any] = {}
+    monkeypatch.setattr(server.mcp.settings, "host", server.mcp.settings.host)
+    monkeypatch.setattr(server.mcp.settings, "port", server.mcp.settings.port)
     monkeypatch.setenv("SPOTIFY_MCP_TRANSPORT", "streamable-http")
-    monkeypatch.delenv("SPOTIFY_MCP_AUTH_TOKEN", raising=False)
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", TOKEN)
     monkeypatch.setattr(server, "_setup", lambda: None)
-    monkeypatch.setattr(server, "_build_http_app", lambda *a: "app")
+    monkeypatch.setattr(server, "_build_http_app", lambda *a, **k: "app")
     monkeypatch.setattr(server.uvicorn, "run", lambda app, **kw: captured.update(app=app, **kw))
     server.main()
     assert captured == {"app": "app", "host": "127.0.0.1", "port": 8000, "log_level": "info"}
@@ -105,3 +103,55 @@ def test_streamable_http_app_serves_authorized_initialize() -> None:
         base_url="http://127.0.0.1:8000",
     ) as client:
         assert client.post("/mcp", headers=headers, json=body).status_code == 200
+
+
+def test_sse_app_accepts_configured_allowed_host() -> None:
+    app = server._build_http_app(FastMCP("t"), "sse", TOKEN, ["spotify.example.com"])
+    client = TestClient(app, base_url="http://spotify.example.com")
+    response = client.post("/messages/", headers=AUTH, content=b"{}")
+    assert response.status_code == 400
+    assert response.text == "session_id is required"
+
+
+def test_configured_allowed_host_keeps_loopback_hosts() -> None:
+    app = FastMCP("t")
+    server._build_http_app(app, "sse", TOKEN, ["spotify.example.com"])
+    assert app.settings.transport_security is not None
+    assert app.settings.transport_security.allowed_hosts == [
+        "127.0.0.1:*",
+        "localhost:*",
+        "[::1]:*",
+        "spotify.example.com",
+    ]
+
+
+def test_main_binds_configured_host_and_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(server.mcp.settings, "host", server.mcp.settings.host)
+    monkeypatch.setattr(server.mcp.settings, "port", server.mcp.settings.port)
+    monkeypatch.setenv("SPOTIFY_MCP_TRANSPORT", "sse")
+    monkeypatch.setenv("SPOTIFY_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("SPOTIFY_MCP_PORT", "9123")
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", TOKEN)
+    monkeypatch.setenv("SPOTIFY_MCP_ALLOWED_HOSTS", "spotify.example.com")
+    monkeypatch.setattr(server, "_setup", lambda: None)
+    monkeypatch.setattr(server, "_build_http_app", lambda *a, **k: "app")
+    monkeypatch.setattr(server.uvicorn, "run", lambda app, **kw: captured.update(app=app, **kw))
+    server.main()
+    assert captured["host"] == "0.0.0.0"
+    assert captured["port"] == 9123
+
+
+def test_main_overrides_preset_fastmcp_host_and_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Older mcp releases fill these from FASTMCP_HOST / FASTMCP_PORT, bypassing our validation.
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(server.mcp.settings, "host", "0.0.0.0")
+    monkeypatch.setattr(server.mcp.settings, "port", 9999)
+    monkeypatch.setenv("SPOTIFY_MCP_TRANSPORT", "streamable-http")
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", TOKEN)
+    monkeypatch.setattr(server, "_setup", lambda: None)
+    monkeypatch.setattr(server, "_build_http_app", lambda *a, **k: "app")
+    monkeypatch.setattr(server.uvicorn, "run", lambda app, **kw: captured.update(app=app, **kw))
+    server.main()
+    assert captured["host"] == "127.0.0.1"
+    assert captured["port"] == 8000

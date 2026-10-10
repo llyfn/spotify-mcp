@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Sequence
 
 import uvicorn
 from mcp.server.fastmcp import FastMCP
@@ -11,7 +12,13 @@ from starlette.types import ASGIApp
 from spotify_mcp import prompts, resources
 from spotify_mcp.auth import AuthManager
 from spotify_mcp.client import SpotifyClient
-from spotify_mcp.config import get_mcp_auth_token, validate_environment, validate_http_environment
+from spotify_mcp.config import (
+    get_mcp_allowed_hosts,
+    get_mcp_host,
+    get_mcp_port,
+    validate_environment,
+    validate_http_environment,
+)
 from spotify_mcp.http_auth import BearerTokenMiddleware
 from spotify_mcp.tools import register_all_tools
 
@@ -44,28 +51,33 @@ def _resolve_transport() -> str:
     return raw
 
 
-def _build_http_app(server: FastMCP, transport: str, auth_token: str | None) -> ASGIApp:
+def _build_http_app(
+    server: FastMCP,
+    transport: str,
+    auth_token: str,
+    allowed_hosts: Sequence[str] = (),
+) -> ASGIApp:
     # Set explicitly: older mcp releases default to no DNS-rebinding protection.
     server.settings.transport_security = TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
-        allowed_hosts=list(_LOOPBACK_ALLOWED_HOSTS),
+        allowed_hosts=[*_LOOPBACK_ALLOWED_HOSTS, *allowed_hosts],
         allowed_origins=list(_LOOPBACK_ALLOWED_ORIGINS),
     )
     app = server.streamable_http_app() if transport == "streamable-http" else server.sse_app()
-    if auth_token:
-        return BearerTokenMiddleware(app, auth_token)
-    return app
+    return BearerTokenMiddleware(app, auth_token)
 
 
 def main() -> None:
     transport = _resolve_transport()
-    if transport != "stdio":
-        validate_http_environment()
-    _setup()
     if transport == "stdio":
+        _setup()
         mcp.run(transport="stdio")
         return
-    app = _build_http_app(mcp, transport, get_mcp_auth_token())
+    auth_token = validate_http_environment()
+    _setup()
+    mcp.settings.host = get_mcp_host()
+    mcp.settings.port = get_mcp_port()
+    app = _build_http_app(mcp, transport, auth_token, get_mcp_allowed_hosts())
     uvicorn.run(
         app,
         host=mcp.settings.host,

@@ -58,21 +58,66 @@ def get_mcp_auth_token() -> str | None:
     return os.environ.get("SPOTIFY_MCP_AUTH_TOKEN", "").strip() or None
 
 
-def validate_http_environment() -> None:
-    """Exit with a helpful error if the HTTP transport settings are invalid or unsafe."""
+DEFAULT_MCP_HOST = "127.0.0.1"
+DEFAULT_MCP_PORT = 8000
+_LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
+
+
+def get_mcp_host() -> str:
+    return os.environ.get("SPOTIFY_MCP_HOST", "").strip() or DEFAULT_MCP_HOST
+
+
+def get_mcp_port() -> int:
+    raw = os.environ.get("SPOTIFY_MCP_PORT", "").strip()
+    if not raw:
+        return DEFAULT_MCP_PORT
+    port = int(raw)
+    if not 1 <= port <= 65535:
+        raise ValueError(f"port out of range: {port}")
+    return port
+
+
+def get_mcp_allowed_hosts() -> list[str]:
+    raw = os.environ.get("SPOTIFY_MCP_ALLOWED_HOSTS", "")
+    return [host.strip() for host in raw.split(",") if host.strip()]
+
+
+def is_loopback_host(host: str) -> bool:
+    return host in _LOOPBACK_HOSTS
+
+
+def validate_http_environment() -> str:
+    """Return the auth token, or exit with an error if the HTTP settings are invalid."""
     errors: list[str] = []
     token = get_mcp_auth_token()
-    if token is not None and len(token) < MIN_AUTH_TOKEN_LENGTH:
+    if token is None:
+        errors.append(
+            "SPOTIFY_MCP_AUTH_TOKEN is required for the sse and streamable-http transports. "
+            'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+        )
+    elif len(token) < MIN_AUTH_TOKEN_LENGTH:
         errors.append(
             f"SPOTIFY_MCP_AUTH_TOKEN must be at least {MIN_AUTH_TOKEN_LENGTH} characters. "
             'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
         )
-    if token is not None and not token.isascii():
+    elif not token.isascii():
         errors.append("SPOTIFY_MCP_AUTH_TOKEN must contain only ASCII characters.")
-    if errors:
+    try:
+        get_mcp_port()
+    except ValueError:
+        errors.append("SPOTIFY_MCP_PORT must be an integer between 1 and 65535.")
+    host = get_mcp_host()
+    if not is_loopback_host(host) and not get_mcp_allowed_hosts():
+        errors.append(
+            f"SPOTIFY_MCP_ALLOWED_HOSTS is required when binding to {host} "
+            "(loopback values are 127.0.0.1, localhost and ::1; list the Host header "
+            "clients send, e.g. spotify.example.com or 203.0.113.5:*)."
+        )
+    if errors or token is None:
         for error in errors:
             print(f"Error: {error}", file=sys.stderr)
         sys.exit(1)
+    return token
 
 
 def validate_environment() -> None:

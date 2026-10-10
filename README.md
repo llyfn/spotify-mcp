@@ -145,9 +145,7 @@ ssh -L 8888:127.0.0.1:8888 you@server   # forwards Spotify's callback to the ser
 mcp-server-spotify auth                  # run on the server, in that SSH session, with your SPOTIFY_* env vars
 ```
 
-`uvx` users run `uvx mcp-server-spotify auth`. Open the printed URL in your local browser. Alternatively, run `mcp-server-spotify auth` on any machine and copy `~/.spotify-mcp/credentials.json` to the server (for containers, into a volume mounted at the user's `~/.spotify-mcp`).
-
-Set `SPOTIFY_MCP_AUTH_TOKEN` whenever the server is reachable from another machine, including through a reverse proxy.
+`uvx` users run `uvx mcp-server-spotify auth`. Open the printed URL in your local browser; the `8888` must match the port in `SPOTIFY_REDIRECT_URI`. Run `auth` as the user the server runs as, since credentials are written to that user's `~/.spotify-mcp`. Alternatively, run `mcp-server-spotify auth` on any machine and copy `~/.spotify-mcp/credentials.json` to the server (for containers, into a volume mounted at the user's `~/.spotify-mcp`); this works only with the same `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` on both.
 
 ### Re-authenticating
 

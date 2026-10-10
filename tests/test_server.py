@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
 import pytest
 from mcp.server.fastmcp import FastMCP
 from starlette.testclient import TestClient
 
 from spotify_mcp import server
+from spotify_mcp.exceptions import AuthenticationError
 from spotify_mcp.http_auth import BearerTokenMiddleware
 
 TOKEN = "t" * 43
@@ -52,9 +54,10 @@ def test_sse_app_rejects_unlisted_host_header() -> None:
 
 
 def test_main_runs_stdio_through_fastmcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(server.sys, "argv", ["mcp-server-spotify"])
     calls: list[str] = []
     monkeypatch.delenv("SPOTIFY_MCP_TRANSPORT", raising=False)
-    monkeypatch.setattr(server, "_setup", lambda: None)
+    monkeypatch.setattr(server, "_setup", lambda **kw: None)
     monkeypatch.setattr(server.mcp, "run", lambda transport: calls.append(transport))
     monkeypatch.setattr(server.uvicorn, "run", lambda *a, **k: pytest.fail("uvicorn used"))
     server.main()
@@ -62,12 +65,13 @@ def test_main_runs_stdio_through_fastmcp(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_main_runs_http_through_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(server.sys, "argv", ["mcp-server-spotify"])
     captured: dict[str, Any] = {}
     monkeypatch.setattr(server.mcp.settings, "host", server.mcp.settings.host)
     monkeypatch.setattr(server.mcp.settings, "port", server.mcp.settings.port)
     monkeypatch.setenv("SPOTIFY_MCP_TRANSPORT", "streamable-http")
     monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", TOKEN)
-    monkeypatch.setattr(server, "_setup", lambda: None)
+    monkeypatch.setattr(server, "_setup", lambda **kw: None)
     monkeypatch.setattr(server, "_build_http_app", lambda *a, **k: "app")
     monkeypatch.setattr(server.uvicorn, "run", lambda app, **kw: captured.update(app=app, **kw))
     server.main()
@@ -126,6 +130,7 @@ def test_configured_allowed_host_keeps_loopback_hosts() -> None:
 
 
 def test_main_binds_configured_host_and_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(server.sys, "argv", ["mcp-server-spotify"])
     captured: dict[str, Any] = {}
     monkeypatch.setattr(server.mcp.settings, "host", server.mcp.settings.host)
     monkeypatch.setattr(server.mcp.settings, "port", server.mcp.settings.port)
@@ -134,7 +139,7 @@ def test_main_binds_configured_host_and_port(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setenv("SPOTIFY_MCP_PORT", "9123")
     monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", TOKEN)
     monkeypatch.setenv("SPOTIFY_MCP_ALLOWED_HOSTS", "spotify.example.com")
-    monkeypatch.setattr(server, "_setup", lambda: None)
+    monkeypatch.setattr(server, "_setup", lambda **kw: None)
     monkeypatch.setattr(server, "_build_http_app", lambda *a, **k: "app")
     monkeypatch.setattr(server.uvicorn, "run", lambda app, **kw: captured.update(app=app, **kw))
     server.main()
@@ -149,9 +154,96 @@ def test_main_overrides_preset_fastmcp_host_and_port(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(server.mcp.settings, "port", 9999)
     monkeypatch.setenv("SPOTIFY_MCP_TRANSPORT", "streamable-http")
     monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", TOKEN)
-    monkeypatch.setattr(server, "_setup", lambda: None)
+    monkeypatch.setattr(server, "_setup", lambda **kw: None)
     monkeypatch.setattr(server, "_build_http_app", lambda *a, **k: "app")
     monkeypatch.setattr(server.uvicorn, "run", lambda app, **kw: captured.update(app=app, **kw))
     server.main()
     assert captured["host"] == "127.0.0.1"
     assert captured["port"] == 8000
+
+
+def test_auth_command_runs_browser_flow_without_starting_server(
+    spotify_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+
+    async def authenticate(self: server.AuthManager) -> None:
+        calls.append("auth")
+
+    monkeypatch.setattr(server.sys, "argv", ["mcp-server-spotify", "auth"])
+    monkeypatch.setattr(server.AuthManager, "authenticate", authenticate)
+    monkeypatch.setattr(server, "_setup", lambda **kw: pytest.fail("server started"))
+    server.main()
+    assert calls == ["auth"]
+
+
+def test_auth_command_exits_on_failure(
+    spotify_env: None, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    async def authenticate(self: server.AuthManager) -> None:
+        raise AuthenticationError("Authentication timed out. Please try again.")
+
+    monkeypatch.setattr(server.sys, "argv", ["mcp-server-spotify", "auth"])
+    monkeypatch.setattr(server.AuthManager, "authenticate", authenticate)
+    with pytest.raises(SystemExit) as exc:
+        server.main()
+    assert exc.value.code == 1
+    assert "Authentication timed out" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        OSError("[Errno 48] Address already in use"),
+        httpx.ConnectError("connection refused"),
+        httpx.ReadTimeout(""),
+    ],
+)
+def test_auth_command_reports_os_and_network_errors(
+    spotify_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    error: Exception,
+) -> None:
+    async def authenticate(self: server.AuthManager) -> None:
+        raise error
+
+    monkeypatch.setattr(server.sys, "argv", ["mcp-server-spotify", "auth"])
+    monkeypatch.setattr(server.AuthManager, "authenticate", authenticate)
+    with pytest.raises(SystemExit) as exc:
+        server.main()
+    assert exc.value.code == 1
+    assert f"Error: {str(error) or type(error).__name__}" in capsys.readouterr().err
+
+
+def test_auth_command_exits_quietly_on_keyboard_interrupt(
+    spotify_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def authenticate(self: server.AuthManager) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(server.sys, "argv", ["mcp-server-spotify", "auth"])
+    monkeypatch.setattr(server.AuthManager, "authenticate", authenticate)
+    with pytest.raises(SystemExit) as exc:
+        server.main()
+    assert exc.value.code == 130
+
+
+@pytest.mark.parametrize(
+    ("transport", "interactive"), [("stdio", True), ("streamable-http", False), ("sse", False)]
+)
+def test_only_stdio_allows_interactive_login(
+    monkeypatch: pytest.MonkeyPatch, transport: str, interactive: bool
+) -> None:
+    seen: list[bool] = []
+    monkeypatch.setattr(server.mcp.settings, "host", server.mcp.settings.host)
+    monkeypatch.setattr(server.mcp.settings, "port", server.mcp.settings.port)
+    monkeypatch.setattr(server.sys, "argv", ["mcp-server-spotify"])
+    monkeypatch.setenv("SPOTIFY_MCP_TRANSPORT", transport)
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", TOKEN)
+    monkeypatch.setattr(server, "_setup", lambda *, interactive_auth: seen.append(interactive_auth))
+    monkeypatch.setattr(server.mcp, "run", lambda transport: None)
+    monkeypatch.setattr(server, "_build_http_app", lambda *a, **k: "app")
+    monkeypatch.setattr(server.uvicorn, "run", lambda *a, **k: None)
+    server.main()
+    assert seen == [interactive]

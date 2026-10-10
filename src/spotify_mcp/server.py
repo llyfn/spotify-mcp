@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 from collections.abc import Sequence
 
+import httpx
 import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -19,6 +21,7 @@ from spotify_mcp.config import (
     validate_environment,
     validate_http_environment,
 )
+from spotify_mcp.exceptions import AuthenticationError
 from spotify_mcp.http_auth import BearerTokenMiddleware
 from spotify_mcp.tools import register_all_tools
 
@@ -29,9 +32,9 @@ _LOOPBACK_ALLOWED_HOSTS = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
 _LOOPBACK_ALLOWED_ORIGINS = ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"]
 
 
-def _setup() -> SpotifyClient:
+def _setup(*, interactive_auth: bool) -> SpotifyClient:
     validate_environment()
-    auth = AuthManager()
+    auth = AuthManager(interactive=interactive_auth)
     client = SpotifyClient(auth)
     register_all_tools(mcp, client)
     resources.register(mcp, client)
@@ -67,14 +70,29 @@ def _build_http_app(
     return BearerTokenMiddleware(app, auth_token)
 
 
+def _run_auth_command() -> None:
+    validate_environment()
+    try:
+        asyncio.run(AuthManager().authenticate())
+    except (AuthenticationError, OSError, httpx.HTTPError) as exc:
+        # Some httpx errors (e.g. timeouts) carry an empty message.
+        print(f"Error: {str(exc) or type(exc).__name__}", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        sys.exit(130)
+
+
 def main() -> None:
+    if sys.argv[1:] == ["auth"]:
+        _run_auth_command()
+        return
     transport = _resolve_transport()
-    if transport == "stdio":
-        _setup()
+    auth_token = None if transport == "stdio" else validate_http_environment()
+    # An HTTP server has no terminal or browser to finish a login inside a tool call.
+    _setup(interactive_auth=transport == "stdio")
+    if auth_token is None:
         mcp.run(transport="stdio")
         return
-    auth_token = validate_http_environment()
-    _setup()
     mcp.settings.host = get_mcp_host()
     mcp.settings.port = get_mcp_port()
     app = _build_http_app(mcp, transport, auth_token, get_mcp_allowed_hosts())

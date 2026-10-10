@@ -145,3 +145,58 @@ async def test_get_access_token_falls_through_to_full_flow_on_refresh_failure(
     token = await auth.get_access_token()
     assert called["flow"] is True
     assert token == "fresh-from-flow"
+
+
+async def test_non_interactive_without_credentials_raises_without_browser_flow(
+    spotify_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    auth = AuthManager(interactive=False)
+
+    async def fail() -> None:
+        pytest.fail("browser flow must not run")
+
+    monkeypatch.setattr(auth, "_run_auth_flow", fail)
+    with pytest.raises(AuthenticationError, match="mcp-server-spotify auth"):
+        await auth.get_access_token()
+
+
+@respx.mock
+async def test_non_interactive_with_failed_refresh_raises(
+    spotify_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_credentials(config.CREDENTIALS_FILE, expires_at=time.time() - 100)
+    respx.post(config.SPOTIFY_TOKEN_URL).mock(return_value=httpx.Response(400))
+    auth = AuthManager(interactive=False)
+
+    async def fail() -> None:
+        pytest.fail("browser flow must not run")
+
+    monkeypatch.setattr(auth, "_run_auth_flow", fail)
+    with pytest.raises(AuthenticationError, match="mcp-server-spotify auth"):
+        await auth.get_access_token()
+
+
+@respx.mock
+async def test_non_interactive_error_includes_refresh_failure(spotify_env: None) -> None:
+    _write_credentials(config.CREDENTIALS_FILE, expires_at=time.time() - 100)
+    respx.post(config.SPOTIFY_TOKEN_URL).mock(return_value=httpx.Response(503))
+    auth = AuthManager(interactive=False)
+    with pytest.raises(AuthenticationError) as exc:
+        await auth.get_access_token()
+    assert "mcp-server-spotify auth" in str(exc.value)
+    assert "503" in str(exc.value)
+
+
+async def test_authenticate_runs_flow_even_with_valid_cached_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_credentials(config.CREDENTIALS_FILE)
+    auth = AuthManager()
+    calls: list[str] = []
+
+    async def flow() -> None:
+        calls.append("flow")
+
+    monkeypatch.setattr(auth, "_run_auth_flow", flow)
+    await auth.authenticate()
+    assert calls == ["flow"]

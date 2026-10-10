@@ -102,14 +102,17 @@ def validate_http_environment() -> None:
     except ValueError:
         errors.append("SPOTIFY_MCP_PORT must be an integer between 1 and 65535.")
     host = get_mcp_host()
-    if not is_loopback_host(host):
-        if token is None:
-            errors.append(f"SPOTIFY_MCP_AUTH_TOKEN is required when binding to {host}.")
-        if not get_mcp_allowed_hosts():
-            errors.append(
-                f"SPOTIFY_MCP_ALLOWED_HOSTS is required when binding to {host} "
-                "(the Host header values clients will send, e.g. spotify.example.com)."
-            )
+    allowed_hosts = get_mcp_allowed_hosts()
+    if token is None and (not is_loopback_host(host) or allowed_hosts):
+        errors.append(
+            "SPOTIFY_MCP_AUTH_TOKEN is required when binding to a non-loopback address "
+            "or when SPOTIFY_MCP_ALLOWED_HOSTS is set."
+        )
+    if not is_loopback_host(host) and not allowed_hosts:
+        errors.append(
+            f"SPOTIFY_MCP_ALLOWED_HOSTS is required when binding to {host} "
+            "(the Host header values clients will send, e.g. spotify.example.com)."
+        )
     if errors:
         for error in errors:
             print(f"Error: {error}", file=sys.stderr)

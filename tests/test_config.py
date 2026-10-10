@@ -69,13 +69,15 @@ def test_auth_token_is_stripped(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.get_mcp_auth_token() == "t" * 40
 
 
-def test_validate_http_environment_passes_without_token(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_http_environment_passes_without_token(
+    http_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.delenv("SPOTIFY_MCP_AUTH_TOKEN", raising=False)
     config.validate_http_environment()
 
 
 def test_validate_http_environment_rejects_short_token(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    http_env: None, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", "short")
     with pytest.raises(SystemExit) as exc:
@@ -155,6 +157,13 @@ def test_validate_rejects_remote_bind_without_token(
     http_env: None, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setenv("SPOTIFY_MCP_HOST", "0.0.0.0")
+    monkeypatch.setenv("SPOTIFY_MCP_ALLOWED_HOSTS", "spotify.example.com")
+    assert "SPOTIFY_MCP_AUTH_TOKEN" in _exit_message(capsys)
+
+
+def test_validate_rejects_allowed_hosts_without_token(
+    http_env: None, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setenv("SPOTIFY_MCP_ALLOWED_HOSTS", "spotify.example.com")
     assert "SPOTIFY_MCP_AUTH_TOKEN" in _exit_message(capsys)
 

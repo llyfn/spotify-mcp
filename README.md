@@ -111,7 +111,7 @@ Then point your client at the local checkout instead of `uvx`:
 | `SPOTIFY_MCP_AUTH_TOKEN` | No | — | Bearer token required on every `sse` / `streamable-http` request (min. 32 chars) |
 | `SPOTIFY_MCP_HOST` | No | `127.0.0.1` | HTTP bind address. Non-loopback values require `SPOTIFY_MCP_AUTH_TOKEN` and `SPOTIFY_MCP_ALLOWED_HOSTS` |
 | `SPOTIFY_MCP_PORT` | No | `8000` | HTTP port |
-| `SPOTIFY_MCP_ALLOWED_HOSTS` | No | — | Comma-separated `Host` header values to accept, e.g. `spotify.example.com` or `10.0.0.5:*` |
+| `SPOTIFY_MCP_ALLOWED_HOSTS` | No | — | Comma-separated `Host` header values to accept, e.g. `spotify.example.com` or `10.0.0.5:*`. Requires `SPOTIFY_MCP_AUTH_TOKEN` |
 
 ## Spotify API notes
 

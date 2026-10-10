@@ -136,6 +136,17 @@ The server uses Spotify's **Authorization Code** flow:
 
 If running in a headless environment (SSH, Docker), the auth URL will be printed to stderr — copy and paste it into a browser manually.
 
+### Remote servers
+
+HTTP transports never start the browser login themselves. Authorize once on the server host:
+
+```bash
+ssh -L 8888:127.0.0.1:8888 you@server   # forwards Spotify's callback to the server
+mcp-server-spotify auth                  # run on the server, in that SSH session, with your SPOTIFY_* env vars
+```
+
+Open the printed URL in your local browser. Alternatively, run `mcp-server-spotify auth` on any machine and copy `~/.spotify-mcp/credentials.json` to the server (for containers, into a volume mounted at the user's `~/.spotify-mcp`).
+
 ### Re-authenticating
 
 To re-authenticate (e.g., after revoking access), delete the stored credentials:

@@ -74,3 +74,34 @@ def test_main_runs_http_through_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(server.uvicorn, "run", lambda app, **kw: captured.update(app=app, **kw))
     server.main()
     assert captured == {"app": "app", "host": "127.0.0.1", "port": 8000, "log_level": "info"}
+
+
+def test_main_exits_on_invalid_token_before_serving_http(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SPOTIFY_MCP_TRANSPORT", "streamable-http")
+    monkeypatch.setenv("SPOTIFY_MCP_AUTH_TOKEN", "short")
+    monkeypatch.setattr(server, "_setup", lambda: pytest.fail("_setup called"))
+    monkeypatch.setattr(server.uvicorn, "run", lambda *a, **k: pytest.fail("uvicorn used"))
+    with pytest.raises(SystemExit) as exc:
+        server.main()
+    assert exc.value.code == 1
+
+
+def test_streamable_http_app_serves_authorized_initialize() -> None:
+    body = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {"name": "t", "version": "0"},
+        },
+    }
+    headers = {**AUTH, "Accept": "application/json, text/event-stream"}
+    with TestClient(
+        server._build_http_app(FastMCP("t"), "streamable-http", TOKEN),
+        base_url="http://127.0.0.1:8000",
+    ) as client:
+        assert client.post("/mcp", headers=headers, json=body).status_code == 200
